@@ -272,123 +272,243 @@ function isOverlapping(x, y, rect) {
     return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
 }
 
-// ===== COLORS GAME (REFEITO - SEM TEXTO) =====
+// ===== COLORS GAME (DRAG & DROP - IGUAL FORMAS) =====
 const colorsData = [
-    { color: '#FF6B6B', emoji: '🔴' },
-    { color: '#4ECDC4', emoji: '🟢' },
-    { color: '#45B7D1', emoji: '🔵' },
-    { color: '#FFEAA7', emoji: '🟡' },
-    { color: '#DDA0DD', emoji: '🟣' },
-    { color: '#FF8C00', emoji: '🟠' }
+    { color: '#FF6B6B', name: 'vermelho' },
+    { color: '#4ECDC4', name: 'verde' },
+    { color: '#45B7D1', name: 'azul' },
+    { color: '#FFEAA7', name: 'amarelo' },
+    { color: '#DDA0DD', name: 'rosa' },
+    { color: '#FF8C00', name: 'laranja' }
 ];
 
 let colorsGameState = {
-    currentQuestion: null,
+    currentTarget: null,
     stars: 3,
     errors: 0,
-    questionsAnswered: 0,
-    totalQuestions: 5,
-    totalStars: 0
+    round: 0,
+    totalRounds: 5,
+    totalStars: 0,
+    draggedElement: null,
+    originalRect: null
 };
 
 function initColorsGame() {
     const level = state.currentLevel;
     document.getElementById('colors-level').textContent = level;
-    updateStarsDisplay('colors', 3);
     
     colorsGameState.stars = 3;
     colorsGameState.errors = 0;
-    colorsGameState.questionsAnswered = 0;
-    colorsGameState.totalQuestions = 3 + level;
+    colorsGameState.round = 0;
+    colorsGameState.totalRounds = 3 + level;
     colorsGameState.totalStars = 0;
     
-    nextColorQuestion();
+    updateStarsDisplay('colors', 3);
+    nextColorRound();
 }
 
-function nextColorQuestion() {
-    if (colorsGameState.questionsAnswered >= colorsGameState.totalQuestions) {
-        const maxStars = colorsGameState.totalQuestions * 3;
+function nextColorRound() {
+    if (colorsGameState.round >= colorsGameState.totalRounds) {
+        const maxStars = colorsGameState.totalRounds * 3;
         const percent = (colorsGameState.totalStars / maxStars) * 100;
         let finalStars = percent >= 80 ? 3 : (percent >= 50 ? 2 : 1);
         showVictoryWithStars(finalStars);
         return;
     }
     
-    // Reset estrelas para nova pergunta
+    // Reset para nova rodada
     colorsGameState.stars = 3;
     colorsGameState.errors = 0;
     updateStarsDisplay('colors', 3);
     
-    // Sempre 3 opções
+    // Escolher 3 cores aleatórias
     const options = getRandomItems(colorsData, 3);
-    const correct = options[Math.floor(Math.random() * options.length)];
+    const target = options[Math.floor(Math.random() * options.length)];
+    colorsGameState.currentTarget = target;
     
-    colorsGameState.currentQuestion = correct;
-    
-    // Mostrar pergunta - SEM TEXTO, apenas visual
+    // Criar área de target (onde soltar)
     const questionDiv = document.getElementById('color-question');
     questionDiv.innerHTML = `
-        <div class="color-find-this">👆🔍</div>
-        <div class="color-target-display" style="background: ${correct.color}"></div>
+        <div class="color-target" data-color="${target.color}">
+            <div class="color-target-inner" style="background: ${target.color}"></div>
+        </div>
     `;
     
-    // Mostrar opções embaralhadas
+    // Criar bolinhas arrastáveis
     const optionsDiv = document.getElementById('color-options');
     optionsDiv.innerHTML = '';
     
     shuffleArray(options).forEach(option => {
-        const btn = document.createElement('button');
-        btn.className = 'color-option';
-        btn.style.background = option.color;
-        btn.dataset.color = option.color;
-        btn.onclick = () => selectColor(option, btn);
-        optionsDiv.appendChild(btn);
+        const wrapper = document.createElement('div');
+        wrapper.className = 'color-piece-wrapper';
+        
+        const piece = document.createElement('div');
+        piece.className = 'color-piece';
+        piece.style.background = option.color;
+        piece.dataset.color = option.color;
+        
+        piece.addEventListener('touchstart', handleColorTouchStart, { passive: false });
+        piece.addEventListener('touchmove', handleColorTouchMove, { passive: false });
+        piece.addEventListener('touchend', handleColorTouchEnd);
+        piece.addEventListener('mousedown', handleColorMouseDown);
+        
+        wrapper.appendChild(piece);
+        optionsDiv.appendChild(wrapper);
     });
 }
 
-function selectColor(selected, btn) {
-    const correct = colorsGameState.currentQuestion;
+function handleColorTouchStart(e) {
+    e.preventDefault();
+    const piece = e.target.closest('.color-piece');
+    if (!piece || piece.classList.contains('matched')) return;
     
-    if (selected.color === correct.color) {
+    const touch = e.touches[0];
+    const rect = piece.getBoundingClientRect();
+    
+    colorsGameState.draggedElement = piece;
+    colorsGameState.originalRect = rect;
+    
+    piece.style.position = 'fixed';
+    piece.style.zIndex = '1000';
+    piece.style.left = (touch.clientX - rect.width / 2) + 'px';
+    piece.style.top = (touch.clientY - rect.height / 2) + 'px';
+    piece.classList.add('dragging');
+    
+    playSound('pop');
+}
+
+function handleColorTouchMove(e) {
+    e.preventDefault();
+    if (!colorsGameState.draggedElement) return;
+    
+    const touch = e.touches[0];
+    const piece = colorsGameState.draggedElement;
+    const rect = colorsGameState.originalRect;
+    
+    piece.style.left = (touch.clientX - rect.width / 2) + 'px';
+    piece.style.top = (touch.clientY - rect.height / 2) + 'px';
+    
+    // Highlight target
+    const target = document.querySelector('.color-target');
+    if (target) {
+        const targetRect = target.getBoundingClientRect();
+        if (isOverlapping(touch.clientX, touch.clientY, targetRect)) {
+            target.classList.add('highlight');
+        } else {
+            target.classList.remove('highlight');
+        }
+    }
+}
+
+function handleColorTouchEnd(e) {
+    if (!colorsGameState.draggedElement) return;
+    
+    const piece = colorsGameState.draggedElement;
+    const touch = e.changedTouches[0];
+    
+    const target = document.querySelector('.color-target');
+    if (target) {
+        target.classList.remove('highlight');
+        const targetRect = target.getBoundingClientRect();
+        
+        if (isOverlapping(touch.clientX, touch.clientY, targetRect)) {
+            checkColorMatch(piece);
+        }
+    }
+    
+    resetColorPiece(piece);
+}
+
+function handleColorMouseDown(e) {
+    const piece = e.target.closest('.color-piece');
+    if (!piece || piece.classList.contains('matched')) return;
+    
+    const rect = piece.getBoundingClientRect();
+    colorsGameState.draggedElement = piece;
+    colorsGameState.originalRect = rect;
+    
+    piece.classList.add('dragging');
+    piece.style.position = 'fixed';
+    piece.style.zIndex = '1000';
+    piece.style.left = (e.clientX - rect.width / 2) + 'px';
+    piece.style.top = (e.clientY - rect.height / 2) + 'px';
+    
+    playSound('pop');
+    
+    const moveHandler = (e) => {
+        piece.style.left = (e.clientX - rect.width / 2) + 'px';
+        piece.style.top = (e.clientY - rect.height / 2) + 'px';
+        
+        const target = document.querySelector('.color-target');
+        if (target) {
+            const targetRect = target.getBoundingClientRect();
+            if (isOverlapping(e.clientX, e.clientY, targetRect)) {
+                target.classList.add('highlight');
+            } else {
+                target.classList.remove('highlight');
+            }
+        }
+    };
+    
+    const upHandler = (e) => {
+        document.removeEventListener('mousemove', moveHandler);
+        document.removeEventListener('mouseup', upHandler);
+        
+        const target = document.querySelector('.color-target');
+        if (target) {
+            target.classList.remove('highlight');
+            const targetRect = target.getBoundingClientRect();
+            
+            if (isOverlapping(e.clientX, e.clientY, targetRect)) {
+                checkColorMatch(piece);
+            }
+        }
+        
+        resetColorPiece(piece);
+    };
+    
+    document.addEventListener('mousemove', moveHandler);
+    document.addEventListener('mouseup', upHandler);
+}
+
+function checkColorMatch(piece) {
+    const targetColor = colorsGameState.currentTarget.color;
+    const pieceColor = piece.dataset.color;
+    
+    if (pieceColor === targetColor) {
         // ACERTOU!
-        btn.classList.add('correct');
+        piece.classList.add('matched');
         colorsGameState.totalStars += colorsGameState.stars;
-        colorsGameState.questionsAnswered++;
+        colorsGameState.round++;
         
         playSound('correct');
         showFeedback(true, colorsGameState.stars);
         
-        // Desabilitar todos os botões
-        document.querySelectorAll('.color-option').forEach(b => b.disabled = true);
-        
-        setTimeout(nextColorQuestion, 1200);
+        setTimeout(nextColorRound, 1000);
     } else {
         // ERROU!
-        btn.classList.add('wrong');
-        btn.disabled = true;
         colorsGameState.errors++;
         colorsGameState.stars = Math.max(1, 3 - colorsGameState.errors);
+        updateStarsDisplay('colors', colorsGameState.stars);
         
         playSound('wrong');
         showFeedback(false);
-        updateStarsDisplay('colors', colorsGameState.stars);
         
-        // Se errou todas as opções menos uma, avança
-        if (colorsGameState.errors >= 2) {
-            colorsGameState.totalStars += colorsGameState.stars;
-            colorsGameState.questionsAnswered++;
-            
-            // Mostrar a correta
-            document.querySelectorAll('.color-option').forEach(b => {
-                if (b.dataset.color === correct.color) {
-                    b.classList.add('correct');
-                }
-                b.disabled = true;
-            });
-            
-            setTimeout(nextColorQuestion, 1500);
-        }
+        // Desabilitar a peça errada
+        piece.classList.add('wrong-piece');
+        piece.style.opacity = '0.3';
+        piece.style.pointerEvents = 'none';
     }
+}
+
+function resetColorPiece(piece) {
+    piece.classList.remove('dragging');
+    piece.style.position = '';
+    piece.style.zIndex = '';
+    piece.style.left = '';
+    piece.style.top = '';
+    colorsGameState.draggedElement = null;
+    colorsGameState.originalRect = null;
 }
 
 function updateStarsDisplay(game, count) {
