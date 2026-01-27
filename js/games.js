@@ -965,29 +965,24 @@ function resetNumberPiece(piece) {
     numbersGameState.originalRect = null;
 }
 
-// ===== ANIMALS GAME (Animal + Som/Habitat) =====
-const animalsData = [
-    { emoji: '🐶', name: 'cachorro', sound: '🔊 Au au!', habitat: '🏠' },
-    { emoji: '🐱', name: 'gato', sound: '🔊 Miau!', habitat: '🏠' },
-    { emoji: '🐮', name: 'vaca', sound: '🔊 Muuu!', habitat: '🌾' },
-    { emoji: '🐷', name: 'porco', sound: '🔊 Oinc!', habitat: '🌾' },
-    { emoji: '🐔', name: 'galinha', sound: '🔊 Cocoricó!', habitat: '🌾' },
-    { emoji: '🦁', name: 'leão', sound: '🔊 Roar!', habitat: '🌳' },
-    { emoji: '🐘', name: 'elefante', sound: '🔊 Truuum!', habitat: '🌳' },
-    { emoji: '🐸', name: 'sapo', sound: '🔊 Croac!', habitat: '💧' },
-    { emoji: '🐟', name: 'peixe', sound: '🔊 Blub!', habitat: '💧' },
-    { emoji: '🦆', name: 'pato', sound: '🔊 Quack!', habitat: '💧' }
+// ===== ANIMALS GAME (Animal + Habitat - CLIQUE) =====
+const habitatsData = [
+    { habitat: '🏠', name: 'Casa', animals: ['🐶', '🐱', '🐹', '🐰'] },
+    { habitat: '🌾', name: 'Fazenda', animals: ['🐮', '🐷', '🐔', '🐴'] },
+    { habitat: '🌳', name: 'Floresta', animals: ['🦁', '🐘', '🦒', '🐵'] },
+    { habitat: '💧', name: 'Água', animals: ['🐟', '🐸', '🦆', '🐳'] }
 ];
 
+const allAnimals = ['🐶', '🐱', '🐹', '🐰', '🐮', '🐷', '🐔', '🐴', '🦁', '🐘', '🦒', '🐵', '🐟', '🐸', '🦆', '🐳'];
+
 let animalsGameState = {
-    currentAnimal: null,
+    currentHabitat: null,
+    correctAnimals: [],
     stars: 3,
     errors: 0,
     round: 0,
     totalRounds: 5,
-    totalStars: 0,
-    draggedElement: null,
-    originalRect: null
+    totalStars: 0
 };
 
 function initAnimalsGame() {
@@ -1017,169 +1012,62 @@ function nextAnimalRound() {
     animalsGameState.errors = 0;
     updateStarsDisplay('animals', 3);
     
-    // Escolher 3 animais
-    const options = getRandomItems(animalsData, 3);
-    const target = options[Math.floor(Math.random() * options.length)];
-    animalsGameState.currentAnimal = target;
+    // Escolher habitat aleatório
+    const habitat = habitatsData[Math.floor(Math.random() * habitatsData.length)];
+    animalsGameState.currentHabitat = habitat;
     
-    // Mostrar o som do animal como alvo
+    // Escolher 1 animal correto desse habitat
+    const correctAnimal = habitat.animals[Math.floor(Math.random() * habitat.animals.length)];
+    animalsGameState.correctAnimals = habitat.animals;
+    
+    // Mostrar o habitat
     const questionDiv = document.getElementById('animals-question');
     questionDiv.innerHTML = `
-        <div class="animal-sound-target" data-animal="${target.emoji}">
-            <span class="animal-sound">${target.sound}</span>
+        <div class="habitat-display">
+            <span class="habitat-icon">${habitat.habitat}</span>
+            <span class="habitat-label">Quem mora aqui?</span>
         </div>
     `;
     
-    // Criar opções de animais
+    // Criar opções (1 correto + 2 errados)
+    let options = [correctAnimal];
+    const wrongAnimals = allAnimals.filter(a => !habitat.animals.includes(a));
+    const randomWrong = shuffleArray(wrongAnimals).slice(0, 2);
+    options = shuffleArray([...options, ...randomWrong]);
+    
+    // Mostrar opções como botões clicáveis
     const optionsDiv = document.getElementById('animals-options');
     optionsDiv.innerHTML = '';
     
-    shuffleArray(options).forEach(animal => {
-        const wrapper = document.createElement('div');
-        wrapper.className = 'animal-piece-wrapper';
-        
-        const piece = document.createElement('div');
-        piece.className = 'animal-piece';
-        piece.dataset.animal = animal.emoji;
-        piece.textContent = animal.emoji;
-        
-        piece.addEventListener('touchstart', handleAnimalTouchStart, { passive: false });
-        piece.addEventListener('touchmove', handleAnimalTouchMove, { passive: false });
-        piece.addEventListener('touchend', handleAnimalTouchEnd);
-        piece.addEventListener('mousedown', handleAnimalMouseDown);
-        
-        wrapper.appendChild(piece);
-        optionsDiv.appendChild(wrapper);
+    options.forEach(animal => {
+        const btn = document.createElement('button');
+        btn.className = 'animal-option';
+        btn.textContent = animal;
+        btn.dataset.animal = animal;
+        btn.onclick = () => checkAnimalAnswer(animal, btn);
+        optionsDiv.appendChild(btn);
     });
 }
 
-function handleAnimalTouchStart(e) {
-    if (e.cancelable) e.preventDefault();
-    const piece = e.target.closest('.animal-piece');
-    if (!piece || piece.classList.contains('matched')) return;
+function checkAnimalAnswer(selected, btn) {
+    const correctAnimals = animalsGameState.correctAnimals;
     
-    const touch = e.touches[0];
-    const rect = piece.getBoundingClientRect();
-    
-    animalsGameState.draggedElement = piece;
-    animalsGameState.originalRect = rect;
-    
-    piece.style.position = 'fixed';
-    piece.style.zIndex = '1000';
-    piece.style.left = (touch.clientX - rect.width / 2) + 'px';
-    piece.style.top = (touch.clientY - rect.height / 2) + 'px';
-    piece.classList.add('dragging');
-    
-    playSound('pop');
-}
-
-function handleAnimalTouchMove(e) {
-    if (e.cancelable) e.preventDefault();
-    if (!animalsGameState.draggedElement) return;
-    
-    const touch = e.touches[0];
-    const piece = animalsGameState.draggedElement;
-    const rect = animalsGameState.originalRect;
-    
-    piece.style.left = (touch.clientX - rect.width / 2) + 'px';
-    piece.style.top = (touch.clientY - rect.height / 2) + 'px';
-    
-    const target = document.querySelector('.animal-sound-target');
-    if (target) {
-        const targetRect = target.getBoundingClientRect();
-        if (isOverlapping(touch.clientX, touch.clientY, targetRect)) {
-            target.classList.add('highlight');
-        } else {
-            target.classList.remove('highlight');
-        }
-    }
-}
-
-function handleAnimalTouchEnd(e) {
-    if (!animalsGameState.draggedElement) return;
-    
-    const piece = animalsGameState.draggedElement;
-    const touch = e.changedTouches[0];
-    
-    const target = document.querySelector('.animal-sound-target');
-    if (target) {
-        target.classList.remove('highlight');
-        const targetRect = target.getBoundingClientRect();
-        
-        if (isOverlapping(touch.clientX, touch.clientY, targetRect)) {
-            checkAnimalMatch(piece);
-        }
-    }
-    
-    resetAnimalPiece(piece);
-}
-
-function handleAnimalMouseDown(e) {
-    const piece = e.target.closest('.animal-piece');
-    if (!piece || piece.classList.contains('matched')) return;
-    
-    const rect = piece.getBoundingClientRect();
-    animalsGameState.draggedElement = piece;
-    animalsGameState.originalRect = rect;
-    
-    piece.classList.add('dragging');
-    piece.style.position = 'fixed';
-    piece.style.zIndex = '1000';
-    piece.style.left = (e.clientX - rect.width / 2) + 'px';
-    piece.style.top = (e.clientY - rect.height / 2) + 'px';
-    
-    playSound('pop');
-    
-    const moveHandler = (e) => {
-        piece.style.left = (e.clientX - rect.width / 2) + 'px';
-        piece.style.top = (e.clientY - rect.height / 2) + 'px';
-        
-        const target = document.querySelector('.animal-sound-target');
-        if (target) {
-            const targetRect = target.getBoundingClientRect();
-            if (isOverlapping(e.clientX, e.clientY, targetRect)) {
-                target.classList.add('highlight');
-            } else {
-                target.classList.remove('highlight');
-            }
-        }
-    };
-    
-    const upHandler = (e) => {
-        document.removeEventListener('mousemove', moveHandler);
-        document.removeEventListener('mouseup', upHandler);
-        
-        const target = document.querySelector('.animal-sound-target');
-        if (target) {
-            target.classList.remove('highlight');
-            const targetRect = target.getBoundingClientRect();
-            
-            if (isOverlapping(e.clientX, e.clientY, targetRect)) {
-                checkAnimalMatch(piece);
-            }
-        }
-        
-        resetAnimalPiece(piece);
-    };
-    
-    document.addEventListener('mousemove', moveHandler);
-    document.addEventListener('mouseup', upHandler);
-}
-
-function checkAnimalMatch(piece) {
-    const targetAnimal = animalsGameState.currentAnimal.emoji;
-    const pieceAnimal = piece.dataset.animal;
-    
-    if (pieceAnimal === targetAnimal) {
-        piece.classList.add('matched');
+    if (correctAnimals.includes(selected)) {
+        // ACERTOU!
+        btn.classList.add('correct');
         animalsGameState.totalStars += animalsGameState.stars;
         animalsGameState.round++;
         
         playSound('correct');
         showFeedback(true, animalsGameState.stars);
         
-        setTimeout(nextAnimalRound, 1000);
+        document.querySelectorAll('.animal-option').forEach(b => b.disabled = true);
+        
+        setTimeout(nextAnimalRound, 1200);
     } else {
+        // ERROU!
+        btn.classList.add('wrong');
+        btn.disabled = true;
         animalsGameState.errors++;
         animalsGameState.stars = Math.max(1, 3 - animalsGameState.errors);
         updateStarsDisplay('animals', animalsGameState.stars);
@@ -1187,21 +1075,23 @@ function checkAnimalMatch(piece) {
         playSound('wrong');
         showFeedback(false);
         
-        piece.classList.add('wrong-piece');
-        piece.style.opacity = '0.3';
-        piece.style.pointerEvents = 'none';
+        if (animalsGameState.errors >= 2) {
+            animalsGameState.totalStars += animalsGameState.stars;
+            animalsGameState.round++;
+            
+            document.querySelectorAll('.animal-option').forEach(b => {
+                if (correctAnimals.includes(b.dataset.animal)) {
+                    b.classList.add('correct');
+                }
+                b.disabled = true;
+            });
+            
+            setTimeout(nextAnimalRound, 1500);
+        }
     }
 }
 
-function resetAnimalPiece(piece) {
-    piece.classList.remove('dragging');
-    piece.style.position = '';
-    piece.style.zIndex = '';
-    piece.style.left = '';
-    piece.style.top = '';
-    animalsGameState.draggedElement = null;
-    animalsGameState.originalRect = null;
-}
+// Funções antigas de drag removidas - agora usa clique
 
 // ===== PUZZLE GAME (Completar Padrões/Sequências) =====
 const patternSets = [

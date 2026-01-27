@@ -1098,7 +1098,7 @@ body {
     visibility: hidden;
 }
 
-/* ===== ANIMALS GAME ===== */
+/* ===== ANIMALS GAME (Habitat - CLIQUE) ===== */
 .animals-game-area {
     justify-content: flex-start;
     padding-top: 40px;
@@ -1106,28 +1106,27 @@ body {
 
 .animals-question {
     text-align: center;
-    margin-bottom: 50px;
+    margin-bottom: 40px;
 }
 
-.animal-sound-target {
+.habitat-display {
     background: white;
     padding: 25px 40px;
     border-radius: 25px;
     box-shadow: 0 10px 40px rgba(0,0,0,0.15);
     display: inline-block;
-    border: 4px dashed transparent;
-    transition: all 0.2s ease;
 }
 
-.animal-sound-target.highlight {
-    transform: scale(1.05);
-    border-color: #4ECDC4;
-    background: #e8f8f5;
+.habitat-icon {
+    font-size: 70px;
+    display: block;
+    margin-bottom: 10px;
 }
 
-.animal-sound {
-    font-size: 28px;
+.habitat-label {
+    font-size: 18px;
     font-weight: 700;
+    color: #666;
 }
 
 .animals-options {
@@ -1136,34 +1135,41 @@ body {
     gap: 20px;
 }
 
-.animal-piece-wrapper {
-    width: 80px;
-    height: 80px;
-}
-
-.animal-piece {
-    width: 80px;
-    height: 80px;
+.animal-option {
+    width: 85px;
+    height: 85px;
+    border: none;
     border-radius: 50%;
     background: white;
+    font-size: 50px;
+    cursor: pointer;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+    transition: all 0.2s ease;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 45px;
-    cursor: grab;
-    box-shadow: 0 8px 25px rgba(0,0,0,0.2);
-    touch-action: none;
     border: 4px solid #96CEB4;
 }
 
-.animal-piece.dragging {
-    transform: scale(1.1);
-    box-shadow: 0 15px 40px rgba(0,0,0,0.3);
-    cursor: grabbing;
+.animal-option:active {
+    transform: scale(0.95);
 }
 
-.animal-piece.matched {
-    visibility: hidden;
+.animal-option:disabled {
+    cursor: default;
+}
+
+.animal-option.correct {
+    background: #d4edda;
+    border-color: #28a745;
+    animation: correctPulse 0.5s ease;
+}
+
+.animal-option.wrong {
+    background: #f8d7da;
+    border-color: #dc3545;
+    opacity: 0.5;
+    animation: wrongShake 0.5s ease;
 }
 
 /* ===== PUZZLE GAME (Padrões/Sequências) ===== */
