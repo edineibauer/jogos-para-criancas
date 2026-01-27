@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#6C63FF">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="description" content="Jogos educativos e divertidos para crianças de 2 a 7 anos">
+    
+    <title>🎮 Jogos para Crianças</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Tela de Carregamento -->
+    <div id="loading-screen" class="screen active">
+        <div class="loading-content">
+            <div class="loading-icon">🎮</div>
+            <div class="loading-text">Carregando...</div>
+            <div class="loading-bar">
+                <div class="loading-progress"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tela de Seleção de Idade -->
+    <div id="age-screen" class="screen">
+        <div class="stars-bg"></div>
+        <div class="age-content">
+            <h1 class="age-title">
+                <span class="wave">👋</span> Olá!
+            </h1>
+            <p class="age-subtitle">Quantos anos você tem?</p>
+            
+            <div class="age-buttons">
+                <button class="age-btn" data-age="2" data-color="#FF6B6B">
+                    <span class="age-number">2</span>
+                    <span class="age-emoji">👶</span>
+                </button>
+                <button class="age-btn" data-age="3" data-color="#4ECDC4">
+                    <span class="age-number">3</span>
+                    <span class="age-emoji">🧒</span>
+                </button>
+                <button class="age-btn" data-age="4" data-color="#45B7D1">
+                    <span class="age-number">4</span>
+                    <span class="age-emoji">👦</span>
+                </button>
+                <button class="age-btn" data-age="5" data-color="#96CEB4">
+                    <span class="age-number">5</span>
+                    <span class="age-emoji">👧</span>
+                </button>
+                <button class="age-btn" data-age="6" data-color="#FFEAA7">
+                    <span class="age-number">6</span>
+                    <span class="age-emoji">🧒</span>
+                </button>
+                <button class="age-btn" data-age="7" data-color="#DDA0DD">
+                    <span class="age-number">7</span>
+                    <span class="age-emoji">🧒</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tela de Menu Principal -->
+    <div id="menu-screen" class="screen">
+        <div class="menu-header">
+            <button class="back-btn" onclick="showScreen('age-screen')">
+                <span>←</span>
+            </button>
+            <div class="player-age">
+                <span id="player-age-display">5 anos</span>
+                <span class="age-emoji-small">🎈</span>
+            </div>
+        </div>
+        
+        <div class="menu-content">
+            <h1 class="menu-title">Escolha um Jogo!</h1>
+            
+            <div class="games-grid" id="games-grid">
+                <!-- Jogos serão inseridos via JS baseado na idade -->
+            </div>
+        </div>
+        
+        <div class="floating-decorations">
+            <span class="float-item">⭐</span>
+            <span class="float-item">🌟</span>
+            <span class="float-item">✨</span>
+            <span class="float-item">🎈</span>
+            <span class="float-item">🎀</span>
+        </div>
+    </div>
+
+    <!-- Tela do Jogo: Formas -->
+    <div id="game-shapes" class="screen game-screen">
+        <div class="game-header">
+            <button class="back-btn" onclick="exitGame()">
+                <span>←</span>
+            </button>
+            <div class="game-info">
+                <div class="level-display">
+                    <span class="level-label">Fase</span>
+                    <span class="level-number" id="shapes-level">1</span>
+                </div>
+                <div class="stars-display">
+                    <span id="shapes-stars">⭐⭐⭐</span>
+                </div>
+            </div>
+            <button class="sound-btn" onclick="toggleSound()">
+                <span id="sound-icon">🔊</span>
+            </button>
+        </div>
+        
+        <div class="game-area" id="shapes-game-area">
+            <!-- Área do jogo de formas -->
+            <div class="shapes-targets" id="shapes-targets"></div>
+            <div class="shapes-pieces" id="shapes-pieces"></div>
+        </div>
+        
+        <div class="game-message" id="game-message"></div>
+    </div>
+
+    <!-- Tela do Jogo: Cores -->
+    <div id="game-colors" class="screen game-screen">
+        <div class="game-header">
+            <button class="back-btn" onclick="exitGame()">
+                <span>←</span>
+            </button>
+            <div class="game-info">
+                <div class="level-display">
+                    <span class="level-label">Fase</span>
+                    <span class="level-number" id="colors-level">1</span>
+                </div>
+                <div class="stars-display">
+                    <span id="colors-stars">⭐⭐⭐</span>
+                </div>
+            </div>
+            <button class="sound-btn" onclick="toggleSound()">
+                <span id="sound-icon-2">🔊</span>
+            </button>
+        </div>
+        
+        <div class="game-area colors-game-area" id="colors-game-area">
+            <div class="color-question" id="color-question"></div>
+            <div class="color-options" id="color-options"></div>
+        </div>
+    </div>
+
+    <!-- Tela do Jogo: Memória -->
+    <div id="game-memory" class="screen game-screen">
+        <div class="game-header">
+            <button class="back-btn" onclick="exitGame()">
+                <span>←</span>
+            </button>
+            <div class="game-info">
+                <div class="level-display">
+                    <span class="level-label">Fase</span>
+                    <span class="level-number" id="memory-level">1</span>
+                </div>
+                <div class="moves-display">
+                    <span class="moves-label">Jogadas:</span>
+                    <span class="moves-number" id="memory-moves">0</span>
+                </div>
+            </div>
+            <button class="sound-btn" onclick="toggleSound()">
+                <span id="sound-icon-3">🔊</span>
+            </button>
+        </div>
+        
+        <div class="game-area memory-game-area" id="memory-game-area">
+            <div class="memory-grid" id="memory-grid"></div>
+        </div>
+    </div>
+
+    <!-- Tela de Vitória -->
+    <div id="victory-screen" class="screen">
+        <div class="victory-content">
+            <div class="victory-stars">⭐⭐⭐</div>
+            <h1 class="victory-title">Parabéns!</h1>
+            <p class="victory-text" id="victory-text">Você completou a fase!</p>
+            <div class="confetti" id="confetti"></div>
+            <div class="victory-buttons">
+                <button class="victory-btn next-btn" onclick="nextLevel()">
+                    Próxima Fase ➡️
+                </button>
+                <button class="victory-btn menu-btn" onclick="exitGame()">
+                    Menu 🏠
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Audio elements -->
+    <audio id="bg-music" loop>
+        <source src="audio/background.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="sound-correct" src="audio/correct.mp3"></audio>
+    <audio id="sound-wrong" src="audio/wrong.mp3"></audio>
+    <audio id="sound-victory" src="audio/victory.mp3"></audio>
+    <audio id="sound-click" src="audio/click.mp3"></audio>
+    <audio id="sound-pop" src="audio/pop.mp3"></audio>
+
+    <script src="js/audio.js"></script>
+    <script src="js/games.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
