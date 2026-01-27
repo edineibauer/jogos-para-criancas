@@ -995,7 +995,7 @@ body {
     color: #333;
 }
 
-/* ===== NUMBERS GAME ===== */
+/* ===== NUMBERS GAME (Contar - CLIQUE) ===== */
 .numbers-game-area {
     justify-content: flex-start;
     padding-top: 30px;
@@ -1006,59 +1006,37 @@ body {
     margin-bottom: 40px;
 }
 
+.numbers-display {
+    background: white;
+    padding: 25px 35px;
+    border-radius: 25px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+    display: inline-block;
+}
+
 .numbers-objects {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    gap: 10px;
-    margin-bottom: 20px;
-    max-width: 250px;
+    gap: 12px;
+    max-width: 220px;
+    margin-bottom: 15px;
 }
 
 .number-object {
-    font-size: 40px;
+    font-size: 45px;
     animation: popIn 0.3s ease backwards;
 }
 
-.number-object:nth-child(1) { animation-delay: 0s; }
-.number-object:nth-child(2) { animation-delay: 0.1s; }
-.number-object:nth-child(3) { animation-delay: 0.2s; }
-.number-object:nth-child(4) { animation-delay: 0.3s; }
-.number-object:nth-child(5) { animation-delay: 0.4s; }
-.number-object:nth-child(6) { animation-delay: 0.5s; }
-.number-object:nth-child(7) { animation-delay: 0.6s; }
-.number-object:nth-child(8) { animation-delay: 0.7s; }
-.number-object:nth-child(9) { animation-delay: 0.8s; }
-
-.numbers-target {
-    width: 100px;
-    height: 100px;
-    border-radius: 20px;
-    background: rgba(255,255,255,0.3);
-    border: 4px dashed rgba(255,255,255,0.7);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto;
-    transition: all 0.2s ease;
+@keyframes popIn {
+    from { transform: scale(0); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
 }
 
-.numbers-target.highlight {
-    transform: scale(1.1);
-    border-color: white;
-    background: rgba(255,255,255,0.5);
-}
-
-.target-question {
-    font-size: 50px;
-    color: rgba(255,255,255,0.5);
-    font-weight: 800;
-}
-
-.target-answer {
-    font-size: 50px;
-    color: white;
-    font-weight: 800;
+.numbers-label {
+    font-size: 20px;
+    font-weight: 700;
+    color: #666;
 }
 
 .numbers-options {
@@ -1067,35 +1045,42 @@ body {
     gap: 20px;
 }
 
-.number-piece-wrapper {
-    width: 70px;
-    height: 70px;
-}
-
-.number-piece {
-    width: 70px;
-    height: 70px;
-    border-radius: 15px;
+.number-option {
+    width: 75px;
+    height: 75px;
+    border: none;
+    border-radius: 20px;
     background: white;
+    font-size: 38px;
+    font-weight: 800;
+    color: #45B7D1;
+    cursor: pointer;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+    transition: all 0.2s ease;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 36px;
-    font-weight: 800;
-    color: #45B7D1;
-    cursor: grab;
-    box-shadow: 0 8px 25px rgba(0,0,0,0.2);
-    touch-action: none;
 }
 
-.number-piece.dragging {
-    transform: scale(1.1);
-    box-shadow: 0 15px 40px rgba(0,0,0,0.3);
-    cursor: grabbing;
+.number-option:active {
+    transform: scale(0.95);
 }
 
-.number-piece.matched {
-    visibility: hidden;
+.number-option:disabled {
+    cursor: default;
+}
+
+.number-option.correct {
+    background: #d4edda;
+    color: #28a745;
+    animation: correctPulse 0.5s ease;
+}
+
+.number-option.wrong {
+    background: #f8d7da;
+    color: #dc3545;
+    opacity: 0.5;
+    animation: wrongShake 0.5s ease;
 }
 
 /* ===== ANIMALS GAME (Habitat - CLIQUE) ===== */

@@ -722,8 +722,8 @@ function showVictoryWithStars(stars) {
     createConfetti();
 }
 
-// ===== NUMBERS GAME (Contar e Arrastar) =====
-const numbersEmojis = ['🍎', '🍊', '🍋', '🍇', '🍓', '🌟', '🎈', '🐟'];
+// ===== NUMBERS GAME (Contar e Clicar) =====
+const numbersEmojis = ['🍎', '🍊', '🍋', '🍇', '🍓', '🌟', '🎈', '🐟', '🦋', '🌸'];
 
 let numbersGameState = {
     currentTarget: null,
@@ -731,9 +731,7 @@ let numbersGameState = {
     errors: 0,
     round: 0,
     totalRounds: 5,
-    totalStars: 0,
-    draggedElement: null,
-    originalRect: null
+    totalStars: 0
 };
 
 function initNumbersGame() {
@@ -763,25 +761,28 @@ function nextNumberRound() {
     numbersGameState.errors = 0;
     updateStarsDisplay('numbers', 3);
     
-    // Número alvo (1-5 para crianças pequenas, até 9 para maiores)
-    const maxNum = state.playerAge <= 4 ? 5 : (state.playerAge <= 6 ? 7 : 9);
+    // Número alvo (1-5 para crianças pequenas, até 7 para maiores)
+    const maxNum = state.playerAge <= 4 ? 5 : 7;
     const targetNum = Math.floor(Math.random() * maxNum) + 1;
     const emoji = numbersEmojis[Math.floor(Math.random() * numbersEmojis.length)];
     
     numbersGameState.currentTarget = targetNum;
     
-    // Mostrar objetos para contar
+    // Mostrar objetos para contar em formato de grid
     const questionDiv = document.getElementById('numbers-question');
+    let objectsHTML = '';
+    for (let i = 0; i < targetNum; i++) {
+        objectsHTML += `<span class="number-object" style="animation-delay: ${i * 0.1}s">${emoji}</span>`;
+    }
+    
     questionDiv.innerHTML = `
-        <div class="numbers-objects">
-            ${emoji.repeat(targetNum).split('').map(e => `<span class="number-object">${e}</span>`).join('')}
-        </div>
-        <div class="numbers-target" data-number="${targetNum}">
-            <span class="target-question">?</span>
+        <div class="numbers-display">
+            <div class="numbers-objects">${objectsHTML}</div>
+            <div class="numbers-label">Quantos?</div>
         </div>
     `;
     
-    // Criar opções de números
+    // Criar opções de números como botões clicáveis
     const optionsDiv = document.getElementById('numbers-options');
     optionsDiv.innerHTML = '';
     
@@ -794,154 +795,32 @@ function nextNumberRound() {
     options = shuffleArray(options);
     
     options.forEach(num => {
-        const wrapper = document.createElement('div');
-        wrapper.className = 'number-piece-wrapper';
-        
-        const piece = document.createElement('div');
-        piece.className = 'number-piece';
-        piece.dataset.number = num;
-        piece.textContent = num;
-        
-        piece.addEventListener('touchstart', handleNumberTouchStart, { passive: false });
-        piece.addEventListener('touchmove', handleNumberTouchMove, { passive: false });
-        piece.addEventListener('touchend', handleNumberTouchEnd);
-        piece.addEventListener('mousedown', handleNumberMouseDown);
-        
-        wrapper.appendChild(piece);
-        optionsDiv.appendChild(wrapper);
+        const btn = document.createElement('button');
+        btn.className = 'number-option';
+        btn.dataset.number = num;
+        btn.textContent = num;
+        btn.onclick = () => checkNumberAnswer(num, btn);
+        optionsDiv.appendChild(btn);
     });
 }
 
-function handleNumberTouchStart(e) {
-    if (e.cancelable) e.preventDefault();
-    const piece = e.target.closest('.number-piece');
-    if (!piece || piece.classList.contains('matched')) return;
-    
-    const touch = e.touches[0];
-    const rect = piece.getBoundingClientRect();
-    
-    numbersGameState.draggedElement = piece;
-    numbersGameState.originalRect = rect;
-    
-    piece.style.position = 'fixed';
-    piece.style.zIndex = '1000';
-    piece.style.left = (touch.clientX - rect.width / 2) + 'px';
-    piece.style.top = (touch.clientY - rect.height / 2) + 'px';
-    piece.classList.add('dragging');
-    
-    playSound('pop');
-}
-
-function handleNumberTouchMove(e) {
-    if (e.cancelable) e.preventDefault();
-    if (!numbersGameState.draggedElement) return;
-    
-    const touch = e.touches[0];
-    const piece = numbersGameState.draggedElement;
-    const rect = numbersGameState.originalRect;
-    
-    piece.style.left = (touch.clientX - rect.width / 2) + 'px';
-    piece.style.top = (touch.clientY - rect.height / 2) + 'px';
-    
-    const target = document.querySelector('.numbers-target');
-    if (target) {
-        const targetRect = target.getBoundingClientRect();
-        if (isOverlapping(touch.clientX, touch.clientY, targetRect)) {
-            target.classList.add('highlight');
-        } else {
-            target.classList.remove('highlight');
-        }
-    }
-}
-
-function handleNumberTouchEnd(e) {
-    if (!numbersGameState.draggedElement) return;
-    
-    const piece = numbersGameState.draggedElement;
-    const touch = e.changedTouches[0];
-    
-    const target = document.querySelector('.numbers-target');
-    if (target) {
-        target.classList.remove('highlight');
-        const targetRect = target.getBoundingClientRect();
-        
-        if (isOverlapping(touch.clientX, touch.clientY, targetRect)) {
-            checkNumberMatch(piece);
-        }
-    }
-    
-    resetNumberPiece(piece);
-}
-
-function handleNumberMouseDown(e) {
-    const piece = e.target.closest('.number-piece');
-    if (!piece || piece.classList.contains('matched')) return;
-    
-    const rect = piece.getBoundingClientRect();
-    numbersGameState.draggedElement = piece;
-    numbersGameState.originalRect = rect;
-    
-    piece.classList.add('dragging');
-    piece.style.position = 'fixed';
-    piece.style.zIndex = '1000';
-    piece.style.left = (e.clientX - rect.width / 2) + 'px';
-    piece.style.top = (e.clientY - rect.height / 2) + 'px';
-    
-    playSound('pop');
-    
-    const moveHandler = (e) => {
-        piece.style.left = (e.clientX - rect.width / 2) + 'px';
-        piece.style.top = (e.clientY - rect.height / 2) + 'px';
-        
-        const target = document.querySelector('.numbers-target');
-        if (target) {
-            const targetRect = target.getBoundingClientRect();
-            if (isOverlapping(e.clientX, e.clientY, targetRect)) {
-                target.classList.add('highlight');
-            } else {
-                target.classList.remove('highlight');
-            }
-        }
-    };
-    
-    const upHandler = (e) => {
-        document.removeEventListener('mousemove', moveHandler);
-        document.removeEventListener('mouseup', upHandler);
-        
-        const target = document.querySelector('.numbers-target');
-        if (target) {
-            target.classList.remove('highlight');
-            const targetRect = target.getBoundingClientRect();
-            
-            if (isOverlapping(e.clientX, e.clientY, targetRect)) {
-                checkNumberMatch(piece);
-            }
-        }
-        
-        resetNumberPiece(piece);
-    };
-    
-    document.addEventListener('mousemove', moveHandler);
-    document.addEventListener('mouseup', upHandler);
-}
-
-function checkNumberMatch(piece) {
-    const targetNum = numbersGameState.currentTarget;
-    const pieceNum = parseInt(piece.dataset.number);
-    
-    if (pieceNum === targetNum) {
-        piece.classList.add('matched');
+function checkNumberAnswer(selected, btn) {
+    if (selected === numbersGameState.currentTarget) {
+        // ACERTOU!
+        btn.classList.add('correct');
         numbersGameState.totalStars += numbersGameState.stars;
         numbersGameState.round++;
-        
-        // Mostrar número no alvo
-        document.querySelector('.numbers-target').innerHTML = `<span class="target-answer">${targetNum}</span>`;
         
         playSound('correct');
         showFeedback(true, numbersGameState.stars);
         
-        setTimeout(nextNumberRound, 1000);
+        document.querySelectorAll('.number-option').forEach(b => b.disabled = true);
+        
+        setTimeout(nextNumberRound, 1200);
     } else {
+        // ERROU!
+        btn.classList.add('wrong');
+        btn.disabled = true;
         numbersGameState.errors++;
         numbersGameState.stars = Math.max(1, 3 - numbersGameState.errors);
         updateStarsDisplay('numbers', numbersGameState.stars);
@@ -949,21 +828,23 @@ function checkNumberMatch(piece) {
         playSound('wrong');
         showFeedback(false);
         
-        piece.classList.add('wrong-piece');
-        piece.style.opacity = '0.3';
-        piece.style.pointerEvents = 'none';
+        if (numbersGameState.errors >= 2) {
+            numbersGameState.totalStars += numbersGameState.stars;
+            numbersGameState.round++;
+            
+            document.querySelectorAll('.number-option').forEach(b => {
+                if (parseInt(b.dataset.number) === numbersGameState.currentTarget) {
+                    b.classList.add('correct');
+                }
+                b.disabled = true;
+            });
+            
+            setTimeout(nextNumberRound, 1500);
+        }
     }
 }
 
-function resetNumberPiece(piece) {
-    piece.classList.remove('dragging');
-    piece.style.position = '';
-    piece.style.zIndex = '';
-    piece.style.left = '';
-    piece.style.top = '';
-    numbersGameState.draggedElement = null;
-    numbersGameState.originalRect = null;
-}
+// Funções antigas de drag removidas - agora usa clique
 
 // ===== ANIMALS GAME (Animal + Habitat - CLIQUE) =====
 const habitatsData = [
