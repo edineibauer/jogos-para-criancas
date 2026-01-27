@@ -10,24 +10,30 @@
   <rect width="512" height="512" rx="100" fill="url(#bg)"/>
   
   <!-- Game controller icon -->
-  <g transform="translate(256, 256)">
+  <g transform="translate(256, 280)">
     <!-- Controller body -->
-    <ellipse cx="0" cy="0" rx="140" ry="90" fill="white" opacity="0.95"/>
+    <ellipse cx="0" cy="0" rx="150" ry="95" fill="white" opacity="0.95"/>
+    
+    <!-- Left grip -->
+    <ellipse cx="-120" cy="50" rx="45" ry="60" fill="white" opacity="0.95"/>
+    
+    <!-- Right grip -->
+    <ellipse cx="120" cy="50" rx="45" ry="60" fill="white" opacity="0.95"/>
     
     <!-- D-pad -->
-    <rect x="-100" y="-15" width="50" height="30" rx="5" fill="#6C63FF"/>
-    <rect x="-85" y="-30" width="20" height="60" rx="5" fill="#6C63FF"/>
+    <rect x="-95" y="-12" width="45" height="24" rx="4" fill="#6C63FF"/>
+    <rect x="-83" y="-24" width="21" height="48" rx="4" fill="#6C63FF"/>
     
     <!-- Buttons -->
-    <circle cx="70" cy="-20" r="18" fill="#FF6B6B"/>
-    <circle cx="100" cy="10" r="18" fill="#4ECDC4"/>
-    <circle cx="70" cy="40" r="18" fill="#FFEAA7"/>
-    <circle cx="40" cy="10" r="18" fill="#DDA0DD"/>
+    <circle cx="65" cy="-20" r="16" fill="#FF6B6B"/>
+    <circle cx="95" cy="5" r="16" fill="#4ECDC4"/>
+    <circle cx="65" cy="30" r="16" fill="#FFEAA7"/>
+    <circle cx="35" cy="5" r="16" fill="#DDA0DD"/>
   </g>
   
   <!-- Stars decoration -->
-  <text x="80" y="100" font-size="50">⭐</text>
-  <text x="380" y="120" font-size="40">✨</text>
-  <text x="420" y="420" font-size="45">🌟</text>
-  <text x="60" y="440" font-size="35">⭐</text>
+  <polygon points="90,80 95,95 110,95 98,105 103,120 90,110 77,120 82,105 70,95 85,95" fill="#FFD700"/>
+  <polygon points="400,100 404,112 417,112 407,120 411,132 400,124 389,132 393,120 383,112 396,112" fill="#FFD700"/>
+  <polygon points="420,400 424,412 437,412 427,420 431,432 420,424 409,432 413,420 403,412 416,412" fill="#FFD700"/>
+  <polygon points="70,420 74,432 87,432 77,440 81,452 70,444 59,452 63,440 53,432 66,432" fill="#FFD700"/>
 </svg>

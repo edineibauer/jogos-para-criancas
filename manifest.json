@@ -2,7 +2,7 @@
     "name": "Jogos para Crianças",
     "short_name": "Jogos Kids",
     "description": "Jogos educativos e divertidos para crianças de 2 a 7 anos",
-    "start_url": "/jogos-para-criancas/",
+    "start_url": "./",
     "display": "standalone",
     "orientation": "portrait",
     "background_color": "#6C63FF",
