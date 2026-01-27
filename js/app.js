@@ -52,11 +52,35 @@ const gamesData = {
     },
     puzzle: {
         id: 'puzzle',
-        title: 'Quebra-cabeça',
+        title: 'Padrões',
         icon: '🧩',
         color: '#DDA0DD',
         minAge: 4,
         maxAge: 7
+    },
+    draw: {
+        id: 'draw',
+        title: 'Desenhar',
+        icon: '✏️',
+        color: '#FF9800',
+        minAge: 2,
+        maxAge: 7
+    },
+    paint: {
+        id: 'paint',
+        title: 'Pintar',
+        icon: '🖌️',
+        color: '#E91E63',
+        minAge: 2,
+        maxAge: 7
+    },
+    trace: {
+        id: 'trace',
+        title: 'Tracejar',
+        icon: '✍️',
+        color: '#009688',
+        minAge: 3,
+        maxAge: 6
     }
 };
 
@@ -213,6 +237,18 @@ function startGame(gameId) {
             showScreen('game-puzzle');
             initPuzzleGame();
             break;
+        case 'draw':
+            showScreen('game-draw');
+            initDrawGame();
+            break;
+        case 'paint':
+            showScreen('game-paint');
+            initPaintGame();
+            break;
+        case 'trace':
+            showScreen('game-trace');
+            initTraceGame();
+            break;
     }
 }
 
@@ -248,6 +284,18 @@ function nextLevel() {
         case 'puzzle':
             showScreen('game-puzzle');
             initPuzzleGame();
+            break;
+        case 'draw':
+            showScreen('game-draw');
+            initDrawGame();
+            break;
+        case 'paint':
+            showScreen('game-paint');
+            initPaintGame();
+            break;
+        case 'trace':
+            showScreen('game-trace');
+            initTraceGame();
             break;
     }
 }

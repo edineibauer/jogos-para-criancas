@@ -1130,3 +1130,548 @@ function checkPatternAnswer(selected, btn) {
 }
 
 // Funções antigas do puzzle removidas - agora usa clique simples
+
+// ===== DESENHO LIVRE =====
+let drawState = {
+    canvas: null,
+    ctx: null,
+    isDrawing: false,
+    currentColor: '#000000',
+    currentSize: 10,
+    currentTool: 'brush',
+    lastX: 0,
+    lastY: 0
+};
+
+function initDrawGame() {
+    const canvas = document.getElementById('draw-canvas');
+    const container = canvas.parentElement;
+    
+    // Ajustar tamanho do canvas
+    canvas.width = container.clientWidth;
+    canvas.height = container.clientHeight;
+    
+    drawState.canvas = canvas;
+    drawState.ctx = canvas.getContext('2d');
+    drawState.ctx.lineCap = 'round';
+    drawState.ctx.lineJoin = 'round';
+    
+    // Fundo branco
+    drawState.ctx.fillStyle = '#FFFFFF';
+    drawState.ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Eventos de desenho
+    canvas.addEventListener('touchstart', handleDrawStart, { passive: false });
+    canvas.addEventListener('touchmove', handleDrawMove, { passive: false });
+    canvas.addEventListener('touchend', handleDrawEnd);
+    
+    canvas.addEventListener('mousedown', handleDrawStart);
+    canvas.addEventListener('mousemove', handleDrawMove);
+    canvas.addEventListener('mouseup', handleDrawEnd);
+    canvas.addEventListener('mouseout', handleDrawEnd);
+    
+    // Reset ferramentas
+    setDrawColor('#000000');
+    setDrawSize(10);
+    setDrawTool('brush');
+}
+
+function handleDrawStart(e) {
+    e.preventDefault();
+    drawState.isDrawing = true;
+    
+    const pos = getDrawPos(e);
+    drawState.lastX = pos.x;
+    drawState.lastY = pos.y;
+    
+    // Desenhar ponto inicial
+    drawState.ctx.beginPath();
+    drawState.ctx.arc(pos.x, pos.y, drawState.currentSize / 2, 0, Math.PI * 2);
+    drawState.ctx.fillStyle = drawState.currentTool === 'eraser' ? '#FFFFFF' : drawState.currentColor;
+    drawState.ctx.fill();
+}
+
+function handleDrawMove(e) {
+    if (!drawState.isDrawing) return;
+    e.preventDefault();
+    
+    const pos = getDrawPos(e);
+    
+    drawState.ctx.beginPath();
+    drawState.ctx.moveTo(drawState.lastX, drawState.lastY);
+    drawState.ctx.lineTo(pos.x, pos.y);
+    drawState.ctx.strokeStyle = drawState.currentTool === 'eraser' ? '#FFFFFF' : drawState.currentColor;
+    drawState.ctx.lineWidth = drawState.currentSize;
+    drawState.ctx.stroke();
+    
+    drawState.lastX = pos.x;
+    drawState.lastY = pos.y;
+}
+
+function handleDrawEnd() {
+    drawState.isDrawing = false;
+}
+
+function getDrawPos(e) {
+    const canvas = drawState.canvas;
+    const rect = canvas.getBoundingClientRect();
+    
+    if (e.touches) {
+        return {
+            x: (e.touches[0].clientX - rect.left) * (canvas.width / rect.width),
+            y: (e.touches[0].clientY - rect.top) * (canvas.height / rect.height)
+        };
+    }
+    return {
+        x: (e.clientX - rect.left) * (canvas.width / rect.width),
+        y: (e.clientY - rect.top) * (canvas.height / rect.height)
+    };
+}
+
+function setDrawColor(color) {
+    drawState.currentColor = color;
+    document.querySelectorAll('#draw-colors .color-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.color === color);
+    });
+}
+
+function setDrawSize(size) {
+    drawState.currentSize = size;
+    document.querySelectorAll('.draw-sizes .size-btn').forEach(btn => {
+        btn.classList.toggle('active', parseInt(btn.dataset.size) === size);
+    });
+}
+
+function setDrawTool(tool) {
+    drawState.currentTool = tool;
+    document.querySelectorAll('.draw-tools .tool-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tool === tool);
+    });
+}
+
+function clearCanvas() {
+    if (confirm('Limpar o desenho?')) {
+        drawState.ctx.fillStyle = '#FFFFFF';
+        drawState.ctx.fillRect(0, 0, drawState.canvas.width, drawState.canvas.height);
+        playSound('pop');
+    }
+}
+
+function saveDrawing() {
+    const link = document.createElement('a');
+    link.download = 'meu-desenho.png';
+    link.href = drawState.canvas.toDataURL();
+    link.click();
+    playSound('victory');
+    alert('Desenho salvo! 🎉');
+}
+
+// ===== PINTAR (Colorir) =====
+const paintImages = [
+    { name: 'Estrela', paths: [{ d: 'M150,20 L180,90 L260,90 L195,140 L220,210 L150,170 L80,210 L105,140 L40,90 L120,90 Z', fill: '#FFD700' }] },
+    { name: 'Coração', paths: [{ d: 'M150,50 C100,0 0,50 150,200 C300,50 200,0 150,50', fill: '#FF69B4' }] },
+    { name: 'Casa', paths: [
+        { d: 'M50,120 L150,40 L250,120 L250,220 L50,220 Z', fill: '#8B4513' },
+        { d: 'M100,220 L100,160 L140,160 L140,220', fill: '#FFD700' },
+        { d: 'M170,130 L210,130 L210,170 L170,170 Z', fill: '#87CEEB' }
+    ]},
+    { name: 'Flor', paths: [
+        { d: 'M150,100 A30,30 0 1,1 150,99.9', fill: '#FFD700' },
+        { d: 'M150,60 A25,25 0 1,1 150,59.9', fill: '#FF69B4' },
+        { d: 'M190,100 A25,25 0 1,1 190,99.9', fill: '#FF69B4' },
+        { d: 'M150,140 A25,25 0 1,1 150,139.9', fill: '#FF69B4' },
+        { d: 'M110,100 A25,25 0 1,1 110,99.9', fill: '#FF69B4' },
+        { d: 'M140,100 L160,100 L150,220', fill: '#228B22' }
+    ]},
+    { name: 'Sol', paths: [
+        { d: 'M150,100 A50,50 0 1,1 150,99.9', fill: '#FFD700' },
+        { d: 'M150,20 L155,40 L145,40 Z', fill: '#FFA500' },
+        { d: 'M150,160 L155,180 L145,180 Z', fill: '#FFA500' },
+        { d: 'M90,100 L70,105 L70,95 Z', fill: '#FFA500' },
+        { d: 'M210,100 L230,105 L230,95 Z', fill: '#FFA500' }
+    ]},
+    { name: 'Peixe', paths: [
+        { d: 'M50,100 Q150,50 250,100 Q150,150 50,100', fill: '#1E90FF' },
+        { d: 'M230,100 L270,70 L270,130 Z', fill: '#FF6347' },
+        { d: 'M100,90 A8,8 0 1,1 100,89.9', fill: '#000000' }
+    ]}
+];
+
+let paintState = {
+    canvas: null,
+    ctx: null,
+    currentImage: 0,
+    currentColor: '#FF0000',
+    regions: []
+};
+
+function initPaintGame() {
+    const canvas = document.getElementById('paint-canvas');
+    const container = canvas.parentElement;
+    
+    canvas.width = container.clientWidth;
+    canvas.height = container.clientHeight - 20;
+    
+    paintState.canvas = canvas;
+    paintState.ctx = canvas.getContext('2d');
+    paintState.currentImage = 0;
+    
+    canvas.addEventListener('click', handlePaintClick);
+    canvas.addEventListener('touchstart', handlePaintTouch, { passive: false });
+    
+    setPaintColor('#FF0000');
+    loadPaintImage();
+}
+
+function loadPaintImage() {
+    const img = paintImages[paintState.currentImage];
+    document.getElementById('paint-title').textContent = img.name;
+    
+    const ctx = paintState.ctx;
+    const canvas = paintState.canvas;
+    
+    // Limpar e fundo branco
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Calcular escala e offset para centralizar
+    const scale = Math.min(canvas.width / 300, canvas.height / 250) * 0.8;
+    const offsetX = (canvas.width - 300 * scale) / 2;
+    const offsetY = (canvas.height - 250 * scale) / 2;
+    
+    paintState.regions = [];
+    
+    // Desenhar paths como contornos
+    img.paths.forEach((pathData, index) => {
+        const path = new Path2D(pathData.d);
+        
+        ctx.save();
+        ctx.translate(offsetX, offsetY);
+        ctx.scale(scale, scale);
+        
+        // Preencher com branco (não pintado ainda)
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fill(path);
+        
+        // Contorno preto
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 2 / scale;
+        ctx.stroke(path);
+        
+        ctx.restore();
+        
+        // Salvar região para detecção de clique
+        paintState.regions.push({
+            path: path,
+            originalFill: pathData.fill,
+            currentFill: '#FFFFFF',
+            scale: scale,
+            offsetX: offsetX,
+            offsetY: offsetY
+        });
+    });
+}
+
+function handlePaintClick(e) {
+    const rect = paintState.canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    paintAtPoint(x, y);
+}
+
+function handlePaintTouch(e) {
+    e.preventDefault();
+    const rect = paintState.canvas.getBoundingClientRect();
+    const x = e.touches[0].clientX - rect.left;
+    const y = e.touches[0].clientY - rect.top;
+    paintAtPoint(x, y);
+}
+
+function paintAtPoint(x, y) {
+    const ctx = paintState.ctx;
+    
+    // Verificar qual região foi clicada
+    for (let i = paintState.regions.length - 1; i >= 0; i--) {
+        const region = paintState.regions[i];
+        
+        ctx.save();
+        ctx.translate(region.offsetX, region.offsetY);
+        ctx.scale(region.scale, region.scale);
+        
+        if (ctx.isPointInPath(region.path, (x - region.offsetX) / region.scale, (y - region.offsetY) / region.scale)) {
+            // Pintar esta região
+            region.currentFill = paintState.currentColor;
+            
+            ctx.fillStyle = region.currentFill;
+            ctx.fill(region.path);
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 2 / region.scale;
+            ctx.stroke(region.path);
+            
+            ctx.restore();
+            playSound('pop');
+            return;
+        }
+        ctx.restore();
+    }
+}
+
+function setPaintColor(color) {
+    paintState.currentColor = color;
+    document.querySelectorAll('#paint-colors .color-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.color === color);
+    });
+}
+
+function prevPaintImage() {
+    paintState.currentImage = (paintState.currentImage - 1 + paintImages.length) % paintImages.length;
+    loadPaintImage();
+}
+
+function nextPaintImage() {
+    paintState.currentImage = (paintState.currentImage + 1) % paintImages.length;
+    loadPaintImage();
+}
+
+function clearPaint() {
+    loadPaintImage();
+    playSound('pop');
+}
+
+// ===== TRACEJAR =====
+const traceShapes = [
+    { name: 'Círculo', points: generateCirclePoints(150, 150, 80, 36) },
+    { name: 'Quadrado', points: generateSquarePoints(70, 70, 160) },
+    { name: 'Triângulo', points: generateTrianglePoints(150, 60, 140) },
+    { name: 'Estrela', points: generateStarPoints(150, 150, 80, 40, 5) },
+    { name: 'Coração', points: generateHeartPoints(150, 160, 70) }
+];
+
+function generateCirclePoints(cx, cy, r, n) {
+    const points = [];
+    for (let i = 0; i <= n; i++) {
+        const angle = (i / n) * Math.PI * 2 - Math.PI / 2;
+        points.push({ x: cx + Math.cos(angle) * r, y: cy + Math.sin(angle) * r });
+    }
+    return points;
+}
+
+function generateSquarePoints(x, y, size) {
+    return [
+        { x: x, y: y },
+        { x: x + size, y: y },
+        { x: x + size, y: y + size },
+        { x: x, y: y + size },
+        { x: x, y: y }
+    ];
+}
+
+function generateTrianglePoints(cx, top, size) {
+    const h = size * Math.sqrt(3) / 2;
+    return [
+        { x: cx, y: top },
+        { x: cx + size / 2, y: top + h },
+        { x: cx - size / 2, y: top + h },
+        { x: cx, y: top }
+    ];
+}
+
+function generateStarPoints(cx, cy, outerR, innerR, points) {
+    const result = [];
+    for (let i = 0; i <= points * 2; i++) {
+        const angle = (i * Math.PI / points) - Math.PI / 2;
+        const r = i % 2 === 0 ? outerR : innerR;
+        result.push({ x: cx + Math.cos(angle) * r, y: cy + Math.sin(angle) * r });
+    }
+    result.push(result[0]);
+    return result;
+}
+
+function generateHeartPoints(cx, bottom, size) {
+    const points = [];
+    for (let t = 0; t <= Math.PI * 2; t += 0.1) {
+        const x = 16 * Math.pow(Math.sin(t), 3);
+        const y = -(13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t));
+        points.push({ x: cx + x * size / 16, y: bottom - size + y * size / 16 });
+    }
+    return points;
+}
+
+let traceState = {
+    canvas: null,
+    ctx: null,
+    currentShape: 0,
+    tracedPoints: 0,
+    totalPoints: 0,
+    isTracing: false,
+    lastPoint: null,
+    stars: 3
+};
+
+function initTraceGame() {
+    const canvas = document.getElementById('trace-canvas');
+    const container = canvas.parentElement;
+    
+    canvas.width = container.clientWidth;
+    canvas.height = container.clientHeight;
+    
+    traceState.canvas = canvas;
+    traceState.ctx = canvas.getContext('2d');
+    traceState.currentShape = (state.currentLevel - 1) % traceShapes.length;
+    traceState.stars = 3;
+    
+    updateStarsDisplay('trace', 3);
+    document.getElementById('trace-level').textContent = state.currentLevel;
+    
+    canvas.addEventListener('touchstart', handleTraceStart, { passive: false });
+    canvas.addEventListener('touchmove', handleTraceMove, { passive: false });
+    canvas.addEventListener('touchend', handleTraceEnd);
+    
+    canvas.addEventListener('mousedown', handleTraceStart);
+    canvas.addEventListener('mousemove', handleTraceMove);
+    canvas.addEventListener('mouseup', handleTraceEnd);
+    
+    loadTraceShape();
+}
+
+function loadTraceShape() {
+    const shape = traceShapes[traceState.currentShape];
+    const ctx = traceState.ctx;
+    const canvas = traceState.canvas;
+    
+    // Limpar canvas
+    ctx.fillStyle = '#F0F8FF';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Escalar e centralizar
+    const scale = Math.min(canvas.width / 300, canvas.height / 300) * 0.9;
+    const offsetX = (canvas.width - 300 * scale) / 2;
+    const offsetY = (canvas.height - 300 * scale) / 2;
+    
+    // Desenhar linha tracejada (guia)
+    ctx.setLineDash([10, 10]);
+    ctx.strokeStyle = '#CCCCCC';
+    ctx.lineWidth = 30 * scale;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    
+    ctx.beginPath();
+    shape.points.forEach((p, i) => {
+        const x = offsetX + p.x * scale;
+        const y = offsetY + p.y * scale;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+    ctx.setLineDash([]);
+    
+    // Ponto inicial
+    const start = shape.points[0];
+    ctx.fillStyle = '#4CAF50';
+    ctx.beginPath();
+    ctx.arc(offsetX + start.x * scale, offsetY + start.y * scale, 20 * scale, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#FFF';
+    ctx.font = `${16 * scale}px Arial`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('▶', offsetX + start.x * scale, offsetY + start.y * scale);
+    
+    // Salvar estado
+    traceState.points = shape.points.map(p => ({
+        x: offsetX + p.x * scale,
+        y: offsetY + p.y * scale,
+        traced: false
+    }));
+    traceState.tracedPoints = 0;
+    traceState.totalPoints = shape.points.length;
+    traceState.scale = scale;
+    traceState.offsetX = offsetX;
+    traceState.offsetY = offsetY;
+    
+    updateTraceProgress();
+}
+
+function handleTraceStart(e) {
+    e.preventDefault();
+    traceState.isTracing = true;
+    
+    const pos = getTracePos(e);
+    traceState.lastPoint = pos;
+    
+    checkTracePoint(pos);
+}
+
+function handleTraceMove(e) {
+    if (!traceState.isTracing) return;
+    e.preventDefault();
+    
+    const pos = getTracePos(e);
+    
+    // Desenhar linha do usuário
+    const ctx = traceState.ctx;
+    ctx.strokeStyle = '#4CAF50';
+    ctx.lineWidth = 15 * traceState.scale;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(traceState.lastPoint.x, traceState.lastPoint.y);
+    ctx.lineTo(pos.x, pos.y);
+    ctx.stroke();
+    
+    traceState.lastPoint = pos;
+    checkTracePoint(pos);
+}
+
+function handleTraceEnd() {
+    traceState.isTracing = false;
+}
+
+function getTracePos(e) {
+    const canvas = traceState.canvas;
+    const rect = canvas.getBoundingClientRect();
+    
+    if (e.touches) {
+        return {
+            x: (e.touches[0].clientX - rect.left) * (canvas.width / rect.width),
+            y: (e.touches[0].clientY - rect.top) * (canvas.height / rect.height)
+        };
+    }
+    return {
+        x: (e.clientX - rect.left) * (canvas.width / rect.width),
+        y: (e.clientY - rect.top) * (canvas.height / rect.height)
+    };
+}
+
+function checkTracePoint(pos) {
+    const tolerance = 40 * traceState.scale;
+    
+    // Verificar pontos não tracejados em ordem
+    for (let i = 0; i < traceState.points.length; i++) {
+        const point = traceState.points[i];
+        if (point.traced) continue;
+        
+        const dist = Math.hypot(pos.x - point.x, pos.y - point.y);
+        if (dist < tolerance) {
+            point.traced = true;
+            traceState.tracedPoints++;
+            updateTraceProgress();
+            
+            // Verificar conclusão
+            if (traceState.tracedPoints >= traceState.totalPoints - 1) {
+                playSound('victory');
+                setTimeout(() => showVictoryWithStars(traceState.stars), 500);
+            }
+            break;
+        }
+    }
+}
+
+function updateTraceProgress() {
+    const percent = (traceState.tracedPoints / (traceState.totalPoints - 1)) * 100;
+    document.getElementById('trace-progress-bar').style.width = percent + '%';
+}
+
+function resetTrace() {
+    loadTraceShape();
+    playSound('pop');
+}

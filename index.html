@@ -258,6 +258,101 @@
         </div>
     </div>
 
+    <!-- Tela do Jogo: Desenho Livre -->
+    <div id="game-draw" class="screen game-screen">
+        <div class="game-header draw-header">
+            <button class="back-btn" onclick="exitGame()">
+                <span>←</span>
+            </button>
+            <div class="draw-tools">
+                <button class="tool-btn active" data-tool="brush" onclick="setDrawTool('brush')">✏️</button>
+                <button class="tool-btn" data-tool="eraser" onclick="setDrawTool('eraser')">🧽</button>
+            </div>
+            <div class="draw-actions">
+                <button class="action-btn" onclick="clearCanvas()">🗑️</button>
+                <button class="action-btn" onclick="saveDrawing()">💾</button>
+            </div>
+        </div>
+        
+        <div class="draw-canvas-container">
+            <canvas id="draw-canvas"></canvas>
+        </div>
+        
+        <div class="draw-colors" id="draw-colors">
+            <button class="color-btn active" data-color="#000000" style="background:#000000" onclick="setDrawColor('#000000')"></button>
+            <button class="color-btn" data-color="#FF0000" style="background:#FF0000" onclick="setDrawColor('#FF0000')"></button>
+            <button class="color-btn" data-color="#FF9800" style="background:#FF9800" onclick="setDrawColor('#FF9800')"></button>
+            <button class="color-btn" data-color="#FFEB3B" style="background:#FFEB3B" onclick="setDrawColor('#FFEB3B')"></button>
+            <button class="color-btn" data-color="#4CAF50" style="background:#4CAF50" onclick="setDrawColor('#4CAF50')"></button>
+            <button class="color-btn" data-color="#2196F3" style="background:#2196F3" onclick="setDrawColor('#2196F3')"></button>
+            <button class="color-btn" data-color="#9C27B0" style="background:#9C27B0" onclick="setDrawColor('#9C27B0')"></button>
+            <button class="color-btn" data-color="#E91E63" style="background:#E91E63" onclick="setDrawColor('#E91E63')"></button>
+        </div>
+        
+        <div class="draw-sizes">
+            <button class="size-btn" data-size="5" onclick="setDrawSize(5)"><span style="width:8px;height:8px"></span></button>
+            <button class="size-btn active" data-size="10" onclick="setDrawSize(10)"><span style="width:14px;height:14px"></span></button>
+            <button class="size-btn" data-size="20" onclick="setDrawSize(20)"><span style="width:22px;height:22px"></span></button>
+        </div>
+    </div>
+
+    <!-- Tela do Jogo: Pintar -->
+    <div id="game-paint" class="screen game-screen">
+        <div class="game-header paint-header">
+            <button class="back-btn" onclick="exitGame()">
+                <span>←</span>
+            </button>
+            <div class="paint-nav">
+                <button class="nav-btn" onclick="prevPaintImage()">◀️</button>
+                <span id="paint-title">Desenho</span>
+                <button class="nav-btn" onclick="nextPaintImage()">▶️</button>
+            </div>
+            <button class="action-btn" onclick="clearPaint()">🔄</button>
+        </div>
+        
+        <div class="paint-canvas-container">
+            <canvas id="paint-canvas"></canvas>
+        </div>
+        
+        <div class="paint-colors" id="paint-colors">
+            <button class="color-btn active" data-color="#FF0000" style="background:#FF0000" onclick="setPaintColor('#FF0000')"></button>
+            <button class="color-btn" data-color="#FF9800" style="background:#FF9800" onclick="setPaintColor('#FF9800')"></button>
+            <button class="color-btn" data-color="#FFEB3B" style="background:#FFEB3B" onclick="setPaintColor('#FFEB3B')"></button>
+            <button class="color-btn" data-color="#4CAF50" style="background:#4CAF50" onclick="setPaintColor('#4CAF50')"></button>
+            <button class="color-btn" data-color="#2196F3" style="background:#2196F3" onclick="setPaintColor('#2196F3')"></button>
+            <button class="color-btn" data-color="#9C27B0" style="background:#9C27B0" onclick="setPaintColor('#9C27B0')"></button>
+            <button class="color-btn" data-color="#E91E63" style="background:#E91E63" onclick="setPaintColor('#E91E63')"></button>
+            <button class="color-btn" data-color="#795548" style="background:#795548" onclick="setPaintColor('#795548')"></button>
+        </div>
+    </div>
+
+    <!-- Tela do Jogo: Tracejar -->
+    <div id="game-trace" class="screen game-screen">
+        <div class="game-header">
+            <button class="back-btn" onclick="exitGame()">
+                <span>←</span>
+            </button>
+            <div class="game-info">
+                <div class="level-display">
+                    <span class="level-label">Fase</span>
+                    <span class="level-number" id="trace-level">1</span>
+                </div>
+                <div class="stars-display">
+                    <span id="trace-stars">⭐⭐⭐</span>
+                </div>
+            </div>
+            <button class="action-btn" onclick="resetTrace()">🔄</button>
+        </div>
+        
+        <div class="trace-canvas-container">
+            <canvas id="trace-canvas"></canvas>
+        </div>
+        
+        <div class="trace-progress">
+            <div class="trace-progress-bar" id="trace-progress-bar"></div>
+        </div>
+    </div>
+
     <!-- Tela de Vitória -->
     <div id="victory-screen" class="screen">
         <div class="victory-content">
