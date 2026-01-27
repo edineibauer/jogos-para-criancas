@@ -93,7 +93,7 @@ function initShapesGame() {
 }
 
 function handleShapeTouchStart(e) {
-    e.preventDefault();
+    if (e.cancelable) e.preventDefault();
     const piece = e.target.closest('.shape-piece');
     if (!piece || piece.classList.contains('matched')) return;
     
@@ -117,7 +117,7 @@ function handleShapeTouchStart(e) {
 }
 
 function handleShapeTouchMove(e) {
-    e.preventDefault();
+    if (e.cancelable) e.preventDefault();
     if (!shapesGameState.draggedElement) return;
     
     const touch = e.touches[0];
@@ -358,7 +358,7 @@ function nextColorRound() {
 }
 
 function handleColorTouchStart(e) {
-    e.preventDefault();
+    if (e.cancelable) e.preventDefault();
     const piece = e.target.closest('.color-piece');
     if (!piece || piece.classList.contains('matched')) return;
     
@@ -378,7 +378,7 @@ function handleColorTouchStart(e) {
 }
 
 function handleColorTouchMove(e) {
-    e.preventDefault();
+    if (e.cancelable) e.preventDefault();
     if (!colorsGameState.draggedElement) return;
     
     const touch = e.touches[0];
@@ -765,7 +765,7 @@ function nextNumberRound() {
 }
 
 function handleNumberTouchStart(e) {
-    e.preventDefault();
+    if (e.cancelable) e.preventDefault();
     const piece = e.target.closest('.number-piece');
     if (!piece || piece.classList.contains('matched')) return;
     
@@ -785,7 +785,7 @@ function handleNumberTouchStart(e) {
 }
 
 function handleNumberTouchMove(e) {
-    e.preventDefault();
+    if (e.cancelable) e.preventDefault();
     if (!numbersGameState.draggedElement) return;
     
     const touch = e.touches[0];
@@ -1006,7 +1006,7 @@ function nextAnimalRound() {
 }
 
 function handleAnimalTouchStart(e) {
-    e.preventDefault();
+    if (e.cancelable) e.preventDefault();
     const piece = e.target.closest('.animal-piece');
     if (!piece || piece.classList.contains('matched')) return;
     
@@ -1026,7 +1026,7 @@ function handleAnimalTouchStart(e) {
 }
 
 function handleAnimalTouchMove(e) {
-    e.preventDefault();
+    if (e.cancelable) e.preventDefault();
     if (!animalsGameState.draggedElement) return;
     
     const touch = e.touches[0];
@@ -1239,7 +1239,7 @@ function initPuzzleGame() {
 }
 
 function handlePuzzleTouchStart(e) {
-    e.preventDefault();
+    if (e.cancelable) e.preventDefault();
     const piece = e.target.closest('.puzzle-piece');
     if (!piece || piece.classList.contains('placed')) return;
     
@@ -1259,7 +1259,7 @@ function handlePuzzleTouchStart(e) {
 }
 
 function handlePuzzleTouchMove(e) {
-    e.preventDefault();
+    if (e.cancelable) e.preventDefault();
     if (!puzzleGameState.draggedElement) return;
     
     const touch = e.touches[0];
