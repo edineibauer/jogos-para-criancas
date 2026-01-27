@@ -1,52 +1,63 @@
 // ===== WEB AUDIO SYNTHESIZER =====
-// Gera sons sem precisar de arquivos externos
-
 const AudioContext = window.AudioContext || window.webkitAudioContext;
 let audioCtx = null;
+let audioInitialized = false;
 
 function initAudio() {
     if (!audioCtx) {
         audioCtx = new AudioContext();
     }
+    
+    // Resumir se suspenso
+    if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+    }
+    
+    audioInitialized = true;
     return audioCtx;
 }
 
-// Garantir que o áudio seja inicializado após interação do usuário
-document.addEventListener('click', () => {
-    if (audioCtx && audioCtx.state === 'suspended') {
-        audioCtx.resume();
-    }
-}, { once: true });
+// Inicializar áudio com qualquer interação
+function setupAudioOnInteraction() {
+    const initOnce = () => {
+        initAudio();
+        document.removeEventListener('touchstart', initOnce);
+        document.removeEventListener('click', initOnce);
+    };
+    
+    document.addEventListener('touchstart', initOnce, { passive: true });
+    document.addEventListener('click', initOnce);
+}
 
-document.addEventListener('touchstart', () => {
-    if (audioCtx && audioCtx.state === 'suspended') {
-        audioCtx.resume();
-    }
-}, { once: true });
+setupAudioOnInteraction();
 
 // ===== SOUND EFFECTS =====
 function playGeneratedSound(type) {
-    if (!state.soundEnabled) return;
+    if (!state || !state.soundEnabled) return;
     
     const ctx = initAudio();
-    if (!ctx) return;
+    if (!ctx || ctx.state === 'suspended') return;
     
-    switch(type) {
-        case 'click':
-            playClickSound(ctx);
-            break;
-        case 'pop':
-            playPopSound(ctx);
-            break;
-        case 'correct':
-            playCorrectSound(ctx);
-            break;
-        case 'wrong':
-            playWrongSound(ctx);
-            break;
-        case 'victory':
-            playVictorySound(ctx);
-            break;
+    try {
+        switch(type) {
+            case 'click':
+                playClickSound(ctx);
+                break;
+            case 'pop':
+                playPopSound(ctx);
+                break;
+            case 'correct':
+                playCorrectSound(ctx);
+                break;
+            case 'wrong':
+                playWrongSound(ctx);
+                break;
+            case 'victory':
+                playVictorySound(ctx);
+                break;
+        }
+    } catch (e) {
+        console.log('Audio error:', e);
     }
 }
 
@@ -57,10 +68,11 @@ function playClickSound(ctx) {
     osc.connect(gain);
     gain.connect(ctx.destination);
     
+    osc.type = 'sine';
     osc.frequency.setValueAtTime(800, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(600, ctx.currentTime + 0.05);
+    osc.frequency.exponentialRampToValueAtTime(600, ctx.currentTime + 0.08);
     
-    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.setValueAtTime(0.4, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
     
     osc.start(ctx.currentTime);
@@ -74,10 +86,11 @@ function playPopSound(ctx) {
     osc.connect(gain);
     gain.connect(ctx.destination);
     
-    osc.frequency.setValueAtTime(400, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(200, ctx.currentTime + 0.15);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(600, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(300, ctx.currentTime + 0.12);
     
-    gain.gain.setValueAtTime(0.4, ctx.currentTime);
+    gain.gain.setValueAtTime(0.5, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
     
     osc.start(ctx.currentTime);
@@ -85,7 +98,7 @@ function playPopSound(ctx) {
 }
 
 function playCorrectSound(ctx) {
-    // Toca uma sequência de notas ascendentes
+    // Melodia alegre ascendente
     const notes = [523.25, 659.25, 783.99]; // C5, E5, G5
     
     notes.forEach((freq, i) => {
@@ -96,43 +109,54 @@ function playCorrectSound(ctx) {
         gain.connect(ctx.destination);
         
         osc.type = 'sine';
-        osc.frequency.setValueAtTime(freq, ctx.currentTime + i * 0.1);
+        osc.frequency.setValueAtTime(freq, ctx.currentTime + i * 0.08);
         
-        gain.gain.setValueAtTime(0.3, ctx.currentTime + i * 0.1);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + i * 0.1 + 0.2);
+        gain.gain.setValueAtTime(0.4, ctx.currentTime + i * 0.08);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + i * 0.08 + 0.2);
         
-        osc.start(ctx.currentTime + i * 0.1);
-        osc.stop(ctx.currentTime + i * 0.1 + 0.2);
+        osc.start(ctx.currentTime + i * 0.08);
+        osc.stop(ctx.currentTime + i * 0.08 + 0.2);
     });
 }
 
 function playWrongSound(ctx) {
+    // Som grave descendente
     const osc = ctx.createOscillator();
+    const osc2 = ctx.createOscillator();
     const gain = ctx.createGain();
     
     osc.connect(gain);
+    osc2.connect(gain);
     gain.connect(ctx.destination);
     
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(200, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.3);
+    osc.type = 'square';
+    osc2.type = 'square';
+    
+    osc.frequency.setValueAtTime(250, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(150, ctx.currentTime + 0.2);
+    
+    osc2.frequency.setValueAtTime(200, ctx.currentTime);
+    osc2.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.2);
     
     gain.gain.setValueAtTime(0.2, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
     
     osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.3);
+    osc2.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.25);
+    osc2.stop(ctx.currentTime + 0.25);
 }
 
 function playVictorySound(ctx) {
-    // Melodia de vitória
+    // Fanfarra de vitória
     const melody = [
-        { freq: 523.25, time: 0 },      // C5
-        { freq: 659.25, time: 0.15 },   // E5
-        { freq: 783.99, time: 0.3 },    // G5
-        { freq: 1046.5, time: 0.45 },   // C6
-        { freq: 783.99, time: 0.6 },    // G5
-        { freq: 1046.5, time: 0.75 },   // C6
+        { freq: 523.25, time: 0, dur: 0.15 },
+        { freq: 523.25, time: 0.15, dur: 0.15 },
+        { freq: 523.25, time: 0.3, dur: 0.15 },
+        { freq: 659.25, time: 0.45, dur: 0.3 },
+        { freq: 523.25, time: 0.8, dur: 0.15 },
+        { freq: 659.25, time: 0.95, dur: 0.15 },
+        { freq: 783.99, time: 1.1, dur: 0.4 },
     ];
     
     melody.forEach(note => {
@@ -142,84 +166,23 @@ function playVictorySound(ctx) {
         osc.connect(gain);
         gain.connect(ctx.destination);
         
-        osc.type = 'sine';
+        osc.type = 'triangle';
         osc.frequency.setValueAtTime(note.freq, ctx.currentTime + note.time);
         
-        gain.gain.setValueAtTime(0.3, ctx.currentTime + note.time);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + note.time + 0.2);
+        gain.gain.setValueAtTime(0.35, ctx.currentTime + note.time);
+        gain.gain.setValueAtTime(0.35, ctx.currentTime + note.time + note.dur * 0.7);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + note.time + note.dur);
         
         osc.start(ctx.currentTime + note.time);
-        osc.stop(ctx.currentTime + note.time + 0.2);
+        osc.stop(ctx.currentTime + note.time + note.dur);
     });
 }
 
-// ===== BACKGROUND MUSIC GENERATOR =====
-let bgMusicInterval = null;
-let bgMusicGain = null;
-
-function startBackgroundMusic() {
-    if (!state.soundEnabled) return;
-    
-    const ctx = initAudio();
-    if (!ctx) return;
-    
-    if (bgMusicGain) return; // Já tocando
-    
-    bgMusicGain = ctx.createGain();
-    bgMusicGain.connect(ctx.destination);
-    bgMusicGain.gain.setValueAtTime(0.1, ctx.currentTime);
-    
-    const notes = [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25];
-    let noteIndex = 0;
-    
-    bgMusicInterval = setInterval(() => {
-        if (!state.soundEnabled) {
-            stopBackgroundMusicGenerated();
-            return;
-        }
-        
-        const osc = ctx.createOscillator();
-        const noteGain = ctx.createGain();
-        
-        osc.connect(noteGain);
-        noteGain.connect(bgMusicGain);
-        
-        osc.type = 'sine';
-        const freq = notes[noteIndex % notes.length];
-        osc.frequency.setValueAtTime(freq, ctx.currentTime);
-        
-        noteGain.gain.setValueAtTime(0.15, ctx.currentTime);
-        noteGain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
-        
-        osc.start(ctx.currentTime);
-        osc.stop(ctx.currentTime + 0.4);
-        
-        noteIndex++;
-    }, 500);
-}
-
-function stopBackgroundMusicGenerated() {
-    if (bgMusicInterval) {
-        clearInterval(bgMusicInterval);
-        bgMusicInterval = null;
-    }
-    bgMusicGain = null;
-}
-
-// Override das funções originais
-const originalPlaySound = window.playSound;
+// Override da função playSound global
 window.playSound = function(soundName) {
     playGeneratedSound(soundName);
 };
 
-const originalPlayBackgroundMusic = window.playBackgroundMusic;
-window.playBackgroundMusic = function() {
-    // Música de fundo desabilitada por padrão (pode ser muito repetitiva)
-    // Descomente a linha abaixo para ativar:
-    // startBackgroundMusic();
-};
-
-const originalStopBackgroundMusic = window.stopBackgroundMusic;
-window.stopBackgroundMusic = function() {
-    stopBackgroundMusicGenerated();
-};
+// Funções de música de fundo (desabilitadas por padrão)
+window.playBackgroundMusic = function() {};
+window.stopBackgroundMusic = function() {};

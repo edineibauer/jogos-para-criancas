@@ -27,14 +27,15 @@ let shapesGameState = {
     targets: [],
     matched: 0,
     draggedElement: null,
-    dragOffset: { x: 0, y: 0 }
+    startX: 0,
+    startY: 0,
+    originalRect: null
 };
 
 function initShapesGame() {
     const level = state.currentLevel;
     document.getElementById('shapes-level').textContent = level;
     
-    // Determinar dificuldade baseado na idade e level
     let shapes;
     const difficulty = Math.min(level + Math.floor(state.playerAge / 3), 6);
     
@@ -49,7 +50,6 @@ function initShapesGame() {
     shapesGameState.targets = shapes;
     shapesGameState.matched = 0;
     
-    // Criar targets
     const targetsContainer = document.getElementById('shapes-targets');
     targetsContainer.innerHTML = '';
     
@@ -62,7 +62,6 @@ function initShapesGame() {
         targetsContainer.appendChild(target);
     });
     
-    // Criar peças embaralhadas
     const piecesContainer = document.getElementById('shapes-pieces');
     piecesContainer.innerHTML = '';
     
@@ -73,20 +72,14 @@ function initShapesGame() {
         piece.className = 'shape-piece';
         piece.dataset.shape = item.shape;
         piece.textContent = item.shape;
-        piece.draggable = false; // Usaremos touch events
         
-        // Touch events
         piece.addEventListener('touchstart', handleShapeTouchStart, { passive: false });
         piece.addEventListener('touchmove', handleShapeTouchMove, { passive: false });
         piece.addEventListener('touchend', handleShapeTouchEnd);
-        
-        // Mouse events (para desktop)
         piece.addEventListener('mousedown', handleShapeMouseDown);
         
         piecesContainer.appendChild(piece);
     });
-    
-    showMessage('Arraste as formas! 🎯', 2500);
 }
 
 function handleShapeTouchStart(e) {
@@ -98,16 +91,17 @@ function handleShapeTouchStart(e) {
     const rect = piece.getBoundingClientRect();
     
     shapesGameState.draggedElement = piece;
-    shapesGameState.dragOffset = {
-        x: touch.clientX - rect.left - rect.width / 2,
-        y: touch.clientY - rect.top - rect.height / 2
-    };
+    shapesGameState.originalRect = rect;
+    shapesGameState.startX = touch.clientX;
+    shapesGameState.startY = touch.clientY;
     
-    piece.classList.add('dragging');
+    // Posicionar imediatamente no dedo
     piece.style.position = 'fixed';
     piece.style.zIndex = '1000';
     piece.style.left = (touch.clientX - rect.width / 2) + 'px';
     piece.style.top = (touch.clientY - rect.height / 2) + 'px';
+    piece.style.transition = 'none'; // Remover transições durante arraste
+    piece.classList.add('dragging');
     
     playSound('pop');
 }
@@ -118,12 +112,13 @@ function handleShapeTouchMove(e) {
     
     const touch = e.touches[0];
     const piece = shapesGameState.draggedElement;
-    const rect = piece.getBoundingClientRect();
+    const rect = shapesGameState.originalRect;
     
+    // Mover diretamente com o dedo (sem delay)
     piece.style.left = (touch.clientX - rect.width / 2) + 'px';
     piece.style.top = (touch.clientY - rect.height / 2) + 'px';
     
-    // Highlight target se estiver sobre
+    // Highlight target
     const targets = document.querySelectorAll('.shape-target:not(.filled)');
     targets.forEach(target => {
         const targetRect = target.getBoundingClientRect();
@@ -141,7 +136,6 @@ function handleShapeTouchEnd(e) {
     const piece = shapesGameState.draggedElement;
     const touch = e.changedTouches[0];
     
-    // Verificar se soltou sobre um target correto
     const targets = document.querySelectorAll('.shape-target:not(.filled)');
     let matched = false;
     
@@ -151,34 +145,34 @@ function handleShapeTouchEnd(e) {
         
         if (isOverlapping(touch.clientX, touch.clientY, targetRect)) {
             if (target.dataset.shape === piece.dataset.shape) {
-                // Match correto!
                 matched = true;
                 target.classList.add('filled');
                 piece.classList.add('matched');
                 shapesGameState.matched++;
                 
                 playSound('correct');
+                showFeedback(true);
                 
-                // Verificar vitória
                 if (shapesGameState.matched === shapesGameState.targets.length) {
-                    setTimeout(() => showVictory('Todas as formas no lugar! 🎉'), 500);
+                    setTimeout(() => showVictory('Muito bem! 🎉'), 500);
                 }
             } else {
-                // Errou
                 playSound('wrong');
-                showMessage('Tente outra vez! 💪', 1500);
+                showFeedback(false);
             }
         }
     });
     
-    // Resetar posição se não acertou
+    // Resetar posição
     piece.classList.remove('dragging');
     piece.style.position = '';
     piece.style.zIndex = '';
     piece.style.left = '';
     piece.style.top = '';
+    piece.style.transition = '';
     
     shapesGameState.draggedElement = null;
+    shapesGameState.originalRect = null;
 }
 
 function handleShapeMouseDown(e) {
@@ -187,10 +181,16 @@ function handleShapeMouseDown(e) {
     
     const rect = piece.getBoundingClientRect();
     shapesGameState.draggedElement = piece;
+    shapesGameState.originalRect = rect;
     
     piece.classList.add('dragging');
     piece.style.position = 'fixed';
     piece.style.zIndex = '1000';
+    piece.style.transition = 'none';
+    piece.style.left = (e.clientX - rect.width / 2) + 'px';
+    piece.style.top = (e.clientY - rect.height / 2) + 'px';
+    
+    playSound('pop');
     
     const moveHandler = (e) => {
         piece.style.left = (e.clientX - rect.width / 2) + 'px';
@@ -223,13 +223,14 @@ function handleShapeMouseDown(e) {
                     piece.classList.add('matched');
                     shapesGameState.matched++;
                     playSound('correct');
+                    showFeedback(true);
                     
                     if (shapesGameState.matched === shapesGameState.targets.length) {
-                        setTimeout(() => showVictory('Todas as formas no lugar! 🎉'), 500);
+                        setTimeout(() => showVictory('Muito bem! 🎉'), 500);
                     }
                 } else {
                     playSound('wrong');
-                    showMessage('Tente outra vez! 💪', 1500);
+                    showFeedback(false);
                 }
             }
         });
@@ -239,70 +240,79 @@ function handleShapeMouseDown(e) {
         piece.style.zIndex = '';
         piece.style.left = '';
         piece.style.top = '';
+        piece.style.transition = '';
         shapesGameState.draggedElement = null;
     };
     
     document.addEventListener('mousemove', moveHandler);
     document.addEventListener('mouseup', upHandler);
-    
-    playSound('pop');
 }
 
 function isOverlapping(x, y, rect) {
     return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
 }
 
-// ===== COLORS GAME =====
+// ===== COLORS GAME (REFEITO - SEM TEXTO) =====
 const colorsData = [
-    { color: '#FF6B6B', name: 'Vermelho', emoji: '🔴' },
-    { color: '#4ECDC4', name: 'Verde', emoji: '🟢' },
-    { color: '#45B7D1', name: 'Azul', emoji: '🔵' },
-    { color: '#FFEAA7', name: 'Amarelo', emoji: '🟡' },
-    { color: '#DDA0DD', name: 'Rosa', emoji: '🟣' },
-    { color: '#FF8C00', name: 'Laranja', emoji: '🟠' },
-    { color: '#333333', name: 'Preto', emoji: '⚫' },
-    { color: '#FFFFFF', name: 'Branco', emoji: '⚪' }
+    { color: '#FF6B6B', emoji: '🔴' },
+    { color: '#4ECDC4', emoji: '🟢' },
+    { color: '#45B7D1', emoji: '🔵' },
+    { color: '#FFEAA7', emoji: '🟡' },
+    { color: '#DDA0DD', emoji: '🟣' },
+    { color: '#FF8C00', emoji: '🟠' }
 ];
 
 let colorsGameState = {
     currentQuestion: null,
-    score: 0,
+    stars: 3,
+    errors: 0,
     questionsAnswered: 0,
-    totalQuestions: 5
+    totalQuestions: 5,
+    totalStars: 0
 };
 
 function initColorsGame() {
     const level = state.currentLevel;
     document.getElementById('colors-level').textContent = level;
+    updateStarsDisplay('colors', 3);
     
-    colorsGameState.score = 0;
+    colorsGameState.stars = 3;
+    colorsGameState.errors = 0;
     colorsGameState.questionsAnswered = 0;
     colorsGameState.totalQuestions = 3 + level;
+    colorsGameState.totalStars = 0;
     
     nextColorQuestion();
 }
 
 function nextColorQuestion() {
     if (colorsGameState.questionsAnswered >= colorsGameState.totalQuestions) {
-        showVictory(`Você acertou ${colorsGameState.score} de ${colorsGameState.totalQuestions}! 🌈`);
+        const maxStars = colorsGameState.totalQuestions * 3;
+        const percent = (colorsGameState.totalStars / maxStars) * 100;
+        let finalStars = percent >= 80 ? 3 : (percent >= 50 ? 2 : 1);
+        showVictoryWithStars(finalStars);
         return;
     }
     
-    // Escolher cor aleatória
-    const numOptions = state.playerAge <= 3 ? 2 : (state.playerAge <= 5 ? 3 : 4);
-    const options = getRandomItems(colorsData, numOptions);
+    // Reset estrelas para nova pergunta
+    colorsGameState.stars = 3;
+    colorsGameState.errors = 0;
+    updateStarsDisplay('colors', 3);
+    
+    // Sempre 3 opções
+    const options = getRandomItems(colorsData, 3);
     const correct = options[Math.floor(Math.random() * options.length)];
     
     colorsGameState.currentQuestion = correct;
     
-    // Mostrar pergunta
+    // Mostrar pergunta - SEM TEXTO, apenas visual
     const questionDiv = document.getElementById('color-question');
     questionDiv.innerHTML = `
-        <div class="color-question-text">Qual é a cor ${correct.name}?</div>
-        <div class="color-question-color">${correct.emoji}</div>
+        <div class="color-find-this">👆🔍</div>
+        <div class="color-target-display" style="background: ${correct.color}"></div>
     `;
     
-    // Mostrar opções
+    // Mostrar opções embaralhadas
     const optionsDiv = document.getElementById('color-options');
     optionsDiv.innerHTML = '';
     
@@ -310,7 +320,7 @@ function nextColorQuestion() {
         const btn = document.createElement('button');
         btn.className = 'color-option';
         btn.style.background = option.color;
-        btn.textContent = option.emoji;
+        btn.dataset.color = option.color;
         btn.onclick = () => selectColor(option, btn);
         optionsDiv.appendChild(btn);
     });
@@ -318,23 +328,54 @@ function nextColorQuestion() {
 
 function selectColor(selected, btn) {
     const correct = colorsGameState.currentQuestion;
-    colorsGameState.questionsAnswered++;
     
-    // Desabilitar todos os botões
-    document.querySelectorAll('.color-option').forEach(b => b.disabled = true);
-    
-    if (selected.name === correct.name) {
+    if (selected.color === correct.color) {
+        // ACERTOU!
         btn.classList.add('correct');
-        colorsGameState.score++;
+        colorsGameState.totalStars += colorsGameState.stars;
+        colorsGameState.questionsAnswered++;
+        
         playSound('correct');
-        showMessage('Muito bem! 🎉', 1000);
+        showFeedback(true, colorsGameState.stars);
+        
+        // Desabilitar todos os botões
+        document.querySelectorAll('.color-option').forEach(b => b.disabled = true);
+        
+        setTimeout(nextColorQuestion, 1200);
     } else {
+        // ERROU!
         btn.classList.add('wrong');
+        btn.disabled = true;
+        colorsGameState.errors++;
+        colorsGameState.stars = Math.max(1, 3 - colorsGameState.errors);
+        
         playSound('wrong');
-        showMessage(`Era ${correct.name}! 💪`, 1500);
+        showFeedback(false);
+        updateStarsDisplay('colors', colorsGameState.stars);
+        
+        // Se errou todas as opções menos uma, avança
+        if (colorsGameState.errors >= 2) {
+            colorsGameState.totalStars += colorsGameState.stars;
+            colorsGameState.questionsAnswered++;
+            
+            // Mostrar a correta
+            document.querySelectorAll('.color-option').forEach(b => {
+                if (b.dataset.color === correct.color) {
+                    b.classList.add('correct');
+                }
+                b.disabled = true;
+            });
+            
+            setTimeout(nextColorQuestion, 1500);
+        }
     }
-    
-    setTimeout(nextColorQuestion, 1500);
+}
+
+function updateStarsDisplay(game, count) {
+    const display = document.getElementById(`${game}-stars`);
+    if (display) {
+        display.textContent = '⭐'.repeat(count) + '☆'.repeat(3 - count);
+    }
 }
 
 // ===== MEMORY GAME =====
@@ -358,7 +399,6 @@ function initMemoryGame() {
     memoryGameState.flippedCards = [];
     memoryGameState.isLocked = false;
     
-    // Determinar número de pares baseado na idade e level
     let numPairs;
     if (state.playerAge <= 3) {
         numPairs = Math.min(2 + level, 4);
@@ -368,12 +408,10 @@ function initMemoryGame() {
         numPairs = Math.min(4 + level, 8);
     }
     
-    // Criar pares
     const selectedEmojis = getRandomItems(memoryEmojis, numPairs);
     const cardPairs = [...selectedEmojis, ...selectedEmojis];
     memoryGameState.cards = shuffleArray(cardPairs);
     
-    // Configurar grid
     const grid = document.getElementById('memory-grid');
     grid.innerHTML = '';
     
@@ -394,8 +432,6 @@ function initMemoryGame() {
         card.onclick = () => flipCard(card);
         grid.appendChild(card);
     });
-    
-    showMessage('Encontre os pares! 🔍', 2500);
 }
 
 function flipCard(card) {
@@ -411,7 +447,6 @@ function flipCard(card) {
     if (memoryGameState.flippedCards.length === 2) {
         memoryGameState.moves++;
         document.getElementById('memory-moves').textContent = memoryGameState.moves;
-        
         checkMemoryMatch();
     }
 }
@@ -424,6 +459,7 @@ function checkMemoryMatch() {
     
     if (match) {
         playSound('correct');
+        showFeedback(true);
         card1.classList.add('matched');
         card2.classList.add('matched');
         memoryGameState.matchedPairs++;
@@ -431,14 +467,16 @@ function checkMemoryMatch() {
         memoryGameState.flippedCards = [];
         memoryGameState.isLocked = false;
         
-        // Verificar vitória
         if (memoryGameState.matchedPairs === memoryGameState.cards.length / 2) {
             setTimeout(() => {
-                showVictory(`Você completou em ${memoryGameState.moves} jogadas! 🧠`);
+                const stars = memoryGameState.moves <= memoryGameState.cards.length ? 3 : 
+                              (memoryGameState.moves <= memoryGameState.cards.length * 1.5 ? 2 : 1);
+                showVictoryWithStars(stars);
             }, 500);
         }
     } else {
         playSound('wrong');
+        showFeedback(false);
         
         setTimeout(() => {
             card1.classList.remove('flipped');
@@ -447,4 +485,39 @@ function checkMemoryMatch() {
             memoryGameState.isLocked = false;
         }, 1000);
     }
+}
+
+// ===== FEEDBACK VISUAL =====
+function showFeedback(success, stars = 0) {
+    // Remover feedback anterior
+    const existing = document.querySelector('.feedback-overlay');
+    if (existing) existing.remove();
+    
+    const overlay = document.createElement('div');
+    overlay.className = 'feedback-overlay';
+    
+    if (success) {
+        overlay.innerHTML = `
+            <div class="feedback-icon success">✓</div>
+            ${stars > 0 ? `<div class="feedback-stars">${'⭐'.repeat(stars)}</div>` : ''}
+        `;
+    } else {
+        overlay.innerHTML = `<div class="feedback-icon error">✗</div>`;
+    }
+    
+    document.body.appendChild(overlay);
+    
+    setTimeout(() => {
+        overlay.classList.add('fade-out');
+        setTimeout(() => overlay.remove(), 300);
+    }, 600);
+}
+
+function showVictoryWithStars(stars) {
+    document.getElementById('victory-stars').textContent = '⭐'.repeat(stars) + '☆'.repeat(3 - stars);
+    document.getElementById('victory-text').textContent = stars === 3 ? 'Perfeito! 🎉' : 
+                                                           stars === 2 ? 'Muito bem! 👏' : 'Continue tentando! 💪';
+    showScreen('victory-screen');
+    playSound('victory');
+    createConfetti();
 }
