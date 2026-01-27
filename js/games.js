@@ -1,27 +1,22 @@
 // ===== SHAPES GAME =====
-const shapesData = {
-    easy: [
-        { shape: '🔵', name: 'círculo' },
-        { shape: '🟥', name: 'quadrado' },
-        { shape: '🔺', name: 'triângulo' }
-    ],
-    medium: [
-        { shape: '🔵', name: 'círculo' },
-        { shape: '🟥', name: 'quadrado' },
-        { shape: '🔺', name: 'triângulo' },
-        { shape: '⭐', name: 'estrela' },
-        { shape: '💜', name: 'coração' }
-    ],
-    hard: [
-        { shape: '🔵', name: 'círculo' },
-        { shape: '🟥', name: 'quadrado' },
-        { shape: '🔺', name: 'triângulo' },
-        { shape: '⭐', name: 'estrela' },
-        { shape: '💜', name: 'coração' },
-        { shape: '🔷', name: 'losango' },
-        { shape: '⬡', name: 'hexágono' }
-    ]
-};
+// Formas organizadas por dificuldade
+const allShapes = [
+    { shape: '🔵', name: 'círculo' },
+    { shape: '🟥', name: 'quadrado' },
+    { shape: '🔺', name: 'triângulo' },
+    { shape: '⭐', name: 'estrela' },
+    { shape: '💜', name: 'coração' },
+    { shape: '🔷', name: 'losango' },
+    { shape: '⬛', name: 'retângulo' },
+    { shape: '⬡', name: 'hexágono' },
+    { shape: '🔶', name: 'laranja' },
+    { shape: '💠', name: 'diamante' },
+    { shape: '🔻', name: 'triângulo invertido' },
+    { shape: '⭕', name: 'anel' }
+];
+
+// Total de 10 fases
+const TOTAL_SHAPE_LEVELS = 10;
 
 let shapesGameState = {
     targets: [],
@@ -36,20 +31,53 @@ let shapesGameState = {
 
 function initShapesGame() {
     const level = state.currentLevel;
-    document.getElementById('shapes-level').textContent = level;
     
-    let shapes;
-    const difficulty = Math.min(level + Math.floor(state.playerAge / 3), 6);
-    
-    if (state.playerAge <= 3 || difficulty <= 2) {
-        shapes = getRandomItems(shapesData.easy, Math.min(2 + level, 3));
-    } else if (state.playerAge <= 5 || difficulty <= 4) {
-        shapes = getRandomItems(shapesData.medium, Math.min(3 + level, 5));
-    } else {
-        shapes = getRandomItems(shapesData.hard, Math.min(4 + level, 7));
+    // Verificar se completou todas as fases
+    if (level > TOTAL_SHAPE_LEVELS) {
+        showGameComplete();
+        return;
     }
     
-    shapesGameState.targets = shapes;
+    document.getElementById('shapes-level').textContent = `${level}/${TOTAL_SHAPE_LEVELS}`;
+    
+    // Progressão clara:
+    // Fase 1-2: 2 alvos, 3 opções (1 extra)
+    // Fase 3-4: 3 alvos, 4 opções (1 extra)
+    // Fase 5-6: 3 alvos, 5 opções (2 extras)
+    // Fase 7-8: 4 alvos, 6 opções (2 extras)
+    // Fase 9-10: 4 alvos, 7 opções (3 extras)
+    
+    let numTargets, numOptions;
+    if (level <= 2) {
+        numTargets = 2;
+        numOptions = 3;
+    } else if (level <= 4) {
+        numTargets = 3;
+        numOptions = 4;
+    } else if (level <= 6) {
+        numTargets = 3;
+        numOptions = 5;
+    } else if (level <= 8) {
+        numTargets = 4;
+        numOptions = 6;
+    } else {
+        numTargets = 4;
+        numOptions = 7;
+    }
+    
+    // Formas disponíveis aumentam com o nível
+    const availableShapes = allShapes.slice(0, Math.min(3 + level, allShapes.length));
+    
+    // Selecionar formas alvo
+    const targetShapes = getRandomItems(availableShapes, numTargets);
+    
+    // Adicionar formas extras (distratores)
+    let allOptions = [...targetShapes];
+    const distractors = availableShapes.filter(s => !targetShapes.includes(s));
+    const extraCount = numOptions - numTargets;
+    allOptions = [...allOptions, ...getRandomItems(distractors, Math.min(extraCount, distractors.length))];
+    
+    shapesGameState.targets = targetShapes;
     shapesGameState.matched = 0;
     shapesGameState.errors = 0;
     shapesGameState.stars = 3;
@@ -58,7 +86,7 @@ function initShapesGame() {
     const targetsContainer = document.getElementById('shapes-targets');
     targetsContainer.innerHTML = '';
     
-    shapes.forEach((item, index) => {
+    targetShapes.forEach((item, index) => {
         const target = document.createElement('div');
         target.className = 'shape-target';
         target.dataset.shape = item.shape;
@@ -70,9 +98,9 @@ function initShapesGame() {
     const piecesContainer = document.getElementById('shapes-pieces');
     piecesContainer.innerHTML = '';
     
-    const shuffledShapes = shuffleArray([...shapes]);
+    const shuffledPieces = shuffleArray([...allOptions]);
     
-    shuffledShapes.forEach((item, index) => {
+    shuffledPieces.forEach((item, index) => {
         // Wrapper para manter o espaço quando arrastar
         const wrapper = document.createElement('div');
         wrapper.className = 'shape-piece-wrapper';
@@ -637,6 +665,26 @@ function checkMemoryMatch() {
             memoryGameState.isLocked = false;
         }, 1000);
     }
+}
+
+// ===== GAME COMPLETE =====
+function showGameComplete() {
+    document.getElementById('victory-stars').textContent = '🏆';
+    document.getElementById('victory-text').textContent = 'Você completou todas as fases! 🎉🎊';
+    document.querySelector('.victory-title').textContent = 'Campeão!';
+    
+    // Esconder botão de próxima fase
+    document.querySelector('.next-btn').style.display = 'none';
+    
+    showScreen('victory-screen');
+    playSound('victory');
+    createConfetti();
+    
+    // Restaurar botão depois (para outros jogos)
+    setTimeout(() => {
+        document.querySelector('.next-btn').style.display = '';
+        document.querySelector('.victory-title').textContent = 'Parabéns!';
+    }, 100);
 }
 
 // ===== FEEDBACK VISUAL =====
