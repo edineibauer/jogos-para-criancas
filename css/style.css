@@ -520,6 +520,12 @@ body {
     gap: 15px;
 }
 
+.shape-piece-wrapper {
+    width: 70px;
+    height: 70px;
+    position: relative;
+}
+
 .shape-piece {
     width: 70px;
     height: 70px;
@@ -533,6 +539,7 @@ body {
     box-shadow: 0 8px 25px rgba(0,0,0,0.2);
     touch-action: none;
     will-change: transform;
+    position: relative;
 }
 
 .shape-piece:active {
@@ -546,10 +553,8 @@ body {
 }
 
 .shape-piece.matched {
-    opacity: 0;
+    visibility: hidden;
     pointer-events: none;
-    transform: scale(0);
-    transition: all 0.3s ease;
 }
 
 /* ===== COLORS GAME ===== */
@@ -639,28 +644,38 @@ body {
 /* ===== MEMORY GAME ===== */
 .memory-game-area {
     padding: 15px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    justify-content: flex-start;
+    padding-top: 20px;
 }
 
 .memory-grid {
     display: grid;
-    gap: 10px;
-    max-width: 350px;
+    gap: 8px;
     width: 100%;
+    max-width: 400px;
+    padding-bottom: 20px;
 }
+
+/* Grid responsivo baseado no número de cards */
+.memory-grid.cols-2 { grid-template-columns: repeat(2, 1fr); }
+.memory-grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
+.memory-grid.cols-4 { grid-template-columns: repeat(4, 1fr); }
 
 .memory-card {
     aspect-ratio: 1;
     border: none;
-    border-radius: 15px;
+    border-radius: 12px;
     cursor: pointer;
-    font-size: 35px;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.3s ease;
-    box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
     position: relative;
     transform-style: preserve-3d;
+    min-height: 60px;
+    max-height: 90px;
 }
 
 .memory-card-inner {
@@ -669,7 +684,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 15px;
+    border-radius: 12px;
     transition: transform 0.4s ease;
     transform-style: preserve-3d;
 }
@@ -685,7 +700,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 15px;
+    border-radius: 12px;
     backface-visibility: hidden;
 }
 
@@ -695,7 +710,7 @@ body {
 
 .memory-card-front::after {
     content: '?';
-    font-size: 30px;
+    font-size: 24px;
     color: white;
     font-weight: 800;
 }
@@ -703,11 +718,24 @@ body {
 .memory-card-back {
     background: white;
     transform: rotateY(180deg);
-    font-size: 50px;
+    font-size: 40px;
+}
+
+/* Cards maiores quando tem poucos */
+.memory-grid.cols-2 .memory-card {
+    max-height: 120px;
+}
+
+.memory-grid.cols-2 .memory-card-back {
+    font-size: 55px;
+}
+
+.memory-grid.cols-2 .memory-card-front::after {
+    font-size: 35px;
 }
 
 .memory-card.matched {
-    opacity: 0.6;
+    opacity: 0.5;
     pointer-events: none;
 }
 

@@ -68,6 +68,10 @@ function initShapesGame() {
     const shuffledShapes = shuffleArray([...shapes]);
     
     shuffledShapes.forEach((item, index) => {
+        // Wrapper para manter o espaço quando arrastar
+        const wrapper = document.createElement('div');
+        wrapper.className = 'shape-piece-wrapper';
+        
         const piece = document.createElement('div');
         piece.className = 'shape-piece';
         piece.dataset.shape = item.shape;
@@ -78,7 +82,8 @@ function initShapesGame() {
         piece.addEventListener('touchend', handleShapeTouchEnd);
         piece.addEventListener('mousedown', handleShapeMouseDown);
         
-        piecesContainer.appendChild(piece);
+        wrapper.appendChild(piece);
+        piecesContainer.appendChild(wrapper);
     });
 }
 
@@ -415,8 +420,20 @@ function initMemoryGame() {
     const grid = document.getElementById('memory-grid');
     grid.innerHTML = '';
     
-    const cols = numPairs <= 4 ? 2 : (numPairs <= 6 ? 3 : 4);
-    grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+    // Determinar número de colunas
+    const totalCards = numPairs * 2;
+    let cols;
+    if (totalCards <= 4) {
+        cols = 2;
+    } else if (totalCards <= 9) {
+        cols = 3;
+    } else {
+        cols = 4;
+    }
+    
+    // Remover classes antigas e adicionar nova
+    grid.classList.remove('cols-2', 'cols-3', 'cols-4');
+    grid.classList.add(`cols-${cols}`);
     
     memoryGameState.cards.forEach((emoji, index) => {
         const card = document.createElement('button');
