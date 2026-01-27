@@ -673,3 +673,734 @@ function showVictoryWithStars(stars) {
     playSound('victory');
     createConfetti();
 }
+
+// ===== NUMBERS GAME (Contar e Arrastar) =====
+const numbersEmojis = ['🍎', '🍊', '🍋', '🍇', '🍓', '🌟', '🎈', '🐟'];
+
+let numbersGameState = {
+    currentTarget: null,
+    stars: 3,
+    errors: 0,
+    round: 0,
+    totalRounds: 5,
+    totalStars: 0,
+    draggedElement: null,
+    originalRect: null
+};
+
+function initNumbersGame() {
+    const level = state.currentLevel;
+    document.getElementById('numbers-level').textContent = level;
+    
+    numbersGameState.stars = 3;
+    numbersGameState.errors = 0;
+    numbersGameState.round = 0;
+    numbersGameState.totalRounds = 3 + level;
+    numbersGameState.totalStars = 0;
+    
+    updateStarsDisplay('numbers', 3);
+    nextNumberRound();
+}
+
+function nextNumberRound() {
+    if (numbersGameState.round >= numbersGameState.totalRounds) {
+        const maxStars = numbersGameState.totalRounds * 3;
+        const percent = (numbersGameState.totalStars / maxStars) * 100;
+        let finalStars = percent >= 80 ? 3 : (percent >= 50 ? 2 : 1);
+        showVictoryWithStars(finalStars);
+        return;
+    }
+    
+    numbersGameState.stars = 3;
+    numbersGameState.errors = 0;
+    updateStarsDisplay('numbers', 3);
+    
+    // Número alvo (1-5 para crianças pequenas, até 9 para maiores)
+    const maxNum = state.playerAge <= 4 ? 5 : (state.playerAge <= 6 ? 7 : 9);
+    const targetNum = Math.floor(Math.random() * maxNum) + 1;
+    const emoji = numbersEmojis[Math.floor(Math.random() * numbersEmojis.length)];
+    
+    numbersGameState.currentTarget = targetNum;
+    
+    // Mostrar objetos para contar
+    const questionDiv = document.getElementById('numbers-question');
+    questionDiv.innerHTML = `
+        <div class="numbers-objects">
+            ${emoji.repeat(targetNum).split('').map(e => `<span class="number-object">${e}</span>`).join('')}
+        </div>
+        <div class="numbers-target" data-number="${targetNum}">
+            <span class="target-question">?</span>
+        </div>
+    `;
+    
+    // Criar opções de números
+    const optionsDiv = document.getElementById('numbers-options');
+    optionsDiv.innerHTML = '';
+    
+    // Gerar 3 opções incluindo a correta
+    let options = [targetNum];
+    while (options.length < 3) {
+        const rand = Math.floor(Math.random() * maxNum) + 1;
+        if (!options.includes(rand)) options.push(rand);
+    }
+    options = shuffleArray(options);
+    
+    options.forEach(num => {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'number-piece-wrapper';
+        
+        const piece = document.createElement('div');
+        piece.className = 'number-piece';
+        piece.dataset.number = num;
+        piece.textContent = num;
+        
+        piece.addEventListener('touchstart', handleNumberTouchStart, { passive: false });
+        piece.addEventListener('touchmove', handleNumberTouchMove, { passive: false });
+        piece.addEventListener('touchend', handleNumberTouchEnd);
+        piece.addEventListener('mousedown', handleNumberMouseDown);
+        
+        wrapper.appendChild(piece);
+        optionsDiv.appendChild(wrapper);
+    });
+}
+
+function handleNumberTouchStart(e) {
+    e.preventDefault();
+    const piece = e.target.closest('.number-piece');
+    if (!piece || piece.classList.contains('matched')) return;
+    
+    const touch = e.touches[0];
+    const rect = piece.getBoundingClientRect();
+    
+    numbersGameState.draggedElement = piece;
+    numbersGameState.originalRect = rect;
+    
+    piece.style.position = 'fixed';
+    piece.style.zIndex = '1000';
+    piece.style.left = (touch.clientX - rect.width / 2) + 'px';
+    piece.style.top = (touch.clientY - rect.height / 2) + 'px';
+    piece.classList.add('dragging');
+    
+    playSound('pop');
+}
+
+function handleNumberTouchMove(e) {
+    e.preventDefault();
+    if (!numbersGameState.draggedElement) return;
+    
+    const touch = e.touches[0];
+    const piece = numbersGameState.draggedElement;
+    const rect = numbersGameState.originalRect;
+    
+    piece.style.left = (touch.clientX - rect.width / 2) + 'px';
+    piece.style.top = (touch.clientY - rect.height / 2) + 'px';
+    
+    const target = document.querySelector('.numbers-target');
+    if (target) {
+        const targetRect = target.getBoundingClientRect();
+        if (isOverlapping(touch.clientX, touch.clientY, targetRect)) {
+            target.classList.add('highlight');
+        } else {
+            target.classList.remove('highlight');
+        }
+    }
+}
+
+function handleNumberTouchEnd(e) {
+    if (!numbersGameState.draggedElement) return;
+    
+    const piece = numbersGameState.draggedElement;
+    const touch = e.changedTouches[0];
+    
+    const target = document.querySelector('.numbers-target');
+    if (target) {
+        target.classList.remove('highlight');
+        const targetRect = target.getBoundingClientRect();
+        
+        if (isOverlapping(touch.clientX, touch.clientY, targetRect)) {
+            checkNumberMatch(piece);
+        }
+    }
+    
+    resetNumberPiece(piece);
+}
+
+function handleNumberMouseDown(e) {
+    const piece = e.target.closest('.number-piece');
+    if (!piece || piece.classList.contains('matched')) return;
+    
+    const rect = piece.getBoundingClientRect();
+    numbersGameState.draggedElement = piece;
+    numbersGameState.originalRect = rect;
+    
+    piece.classList.add('dragging');
+    piece.style.position = 'fixed';
+    piece.style.zIndex = '1000';
+    piece.style.left = (e.clientX - rect.width / 2) + 'px';
+    piece.style.top = (e.clientY - rect.height / 2) + 'px';
+    
+    playSound('pop');
+    
+    const moveHandler = (e) => {
+        piece.style.left = (e.clientX - rect.width / 2) + 'px';
+        piece.style.top = (e.clientY - rect.height / 2) + 'px';
+        
+        const target = document.querySelector('.numbers-target');
+        if (target) {
+            const targetRect = target.getBoundingClientRect();
+            if (isOverlapping(e.clientX, e.clientY, targetRect)) {
+                target.classList.add('highlight');
+            } else {
+                target.classList.remove('highlight');
+            }
+        }
+    };
+    
+    const upHandler = (e) => {
+        document.removeEventListener('mousemove', moveHandler);
+        document.removeEventListener('mouseup', upHandler);
+        
+        const target = document.querySelector('.numbers-target');
+        if (target) {
+            target.classList.remove('highlight');
+            const targetRect = target.getBoundingClientRect();
+            
+            if (isOverlapping(e.clientX, e.clientY, targetRect)) {
+                checkNumberMatch(piece);
+            }
+        }
+        
+        resetNumberPiece(piece);
+    };
+    
+    document.addEventListener('mousemove', moveHandler);
+    document.addEventListener('mouseup', upHandler);
+}
+
+function checkNumberMatch(piece) {
+    const targetNum = numbersGameState.currentTarget;
+    const pieceNum = parseInt(piece.dataset.number);
+    
+    if (pieceNum === targetNum) {
+        piece.classList.add('matched');
+        numbersGameState.totalStars += numbersGameState.stars;
+        numbersGameState.round++;
+        
+        // Mostrar número no alvo
+        document.querySelector('.numbers-target').innerHTML = `<span class="target-answer">${targetNum}</span>`;
+        
+        playSound('correct');
+        showFeedback(true, numbersGameState.stars);
+        
+        setTimeout(nextNumberRound, 1000);
+    } else {
+        numbersGameState.errors++;
+        numbersGameState.stars = Math.max(1, 3 - numbersGameState.errors);
+        updateStarsDisplay('numbers', numbersGameState.stars);
+        
+        playSound('wrong');
+        showFeedback(false);
+        
+        piece.classList.add('wrong-piece');
+        piece.style.opacity = '0.3';
+        piece.style.pointerEvents = 'none';
+    }
+}
+
+function resetNumberPiece(piece) {
+    piece.classList.remove('dragging');
+    piece.style.position = '';
+    piece.style.zIndex = '';
+    piece.style.left = '';
+    piece.style.top = '';
+    numbersGameState.draggedElement = null;
+    numbersGameState.originalRect = null;
+}
+
+// ===== ANIMALS GAME (Animal + Som/Habitat) =====
+const animalsData = [
+    { emoji: '🐶', name: 'cachorro', sound: '🔊 Au au!', habitat: '🏠' },
+    { emoji: '🐱', name: 'gato', sound: '🔊 Miau!', habitat: '🏠' },
+    { emoji: '🐮', name: 'vaca', sound: '🔊 Muuu!', habitat: '🌾' },
+    { emoji: '🐷', name: 'porco', sound: '🔊 Oinc!', habitat: '🌾' },
+    { emoji: '🐔', name: 'galinha', sound: '🔊 Cocoricó!', habitat: '🌾' },
+    { emoji: '🦁', name: 'leão', sound: '🔊 Roar!', habitat: '🌳' },
+    { emoji: '🐘', name: 'elefante', sound: '🔊 Truuum!', habitat: '🌳' },
+    { emoji: '🐸', name: 'sapo', sound: '🔊 Croac!', habitat: '💧' },
+    { emoji: '🐟', name: 'peixe', sound: '🔊 Blub!', habitat: '💧' },
+    { emoji: '🦆', name: 'pato', sound: '🔊 Quack!', habitat: '💧' }
+];
+
+let animalsGameState = {
+    currentAnimal: null,
+    stars: 3,
+    errors: 0,
+    round: 0,
+    totalRounds: 5,
+    totalStars: 0,
+    draggedElement: null,
+    originalRect: null
+};
+
+function initAnimalsGame() {
+    const level = state.currentLevel;
+    document.getElementById('animals-level').textContent = level;
+    
+    animalsGameState.stars = 3;
+    animalsGameState.errors = 0;
+    animalsGameState.round = 0;
+    animalsGameState.totalRounds = 3 + level;
+    animalsGameState.totalStars = 0;
+    
+    updateStarsDisplay('animals', 3);
+    nextAnimalRound();
+}
+
+function nextAnimalRound() {
+    if (animalsGameState.round >= animalsGameState.totalRounds) {
+        const maxStars = animalsGameState.totalRounds * 3;
+        const percent = (animalsGameState.totalStars / maxStars) * 100;
+        let finalStars = percent >= 80 ? 3 : (percent >= 50 ? 2 : 1);
+        showVictoryWithStars(finalStars);
+        return;
+    }
+    
+    animalsGameState.stars = 3;
+    animalsGameState.errors = 0;
+    updateStarsDisplay('animals', 3);
+    
+    // Escolher 3 animais
+    const options = getRandomItems(animalsData, 3);
+    const target = options[Math.floor(Math.random() * options.length)];
+    animalsGameState.currentAnimal = target;
+    
+    // Mostrar o som do animal como alvo
+    const questionDiv = document.getElementById('animals-question');
+    questionDiv.innerHTML = `
+        <div class="animal-sound-target" data-animal="${target.emoji}">
+            <span class="animal-sound">${target.sound}</span>
+        </div>
+    `;
+    
+    // Criar opções de animais
+    const optionsDiv = document.getElementById('animals-options');
+    optionsDiv.innerHTML = '';
+    
+    shuffleArray(options).forEach(animal => {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'animal-piece-wrapper';
+        
+        const piece = document.createElement('div');
+        piece.className = 'animal-piece';
+        piece.dataset.animal = animal.emoji;
+        piece.textContent = animal.emoji;
+        
+        piece.addEventListener('touchstart', handleAnimalTouchStart, { passive: false });
+        piece.addEventListener('touchmove', handleAnimalTouchMove, { passive: false });
+        piece.addEventListener('touchend', handleAnimalTouchEnd);
+        piece.addEventListener('mousedown', handleAnimalMouseDown);
+        
+        wrapper.appendChild(piece);
+        optionsDiv.appendChild(wrapper);
+    });
+}
+
+function handleAnimalTouchStart(e) {
+    e.preventDefault();
+    const piece = e.target.closest('.animal-piece');
+    if (!piece || piece.classList.contains('matched')) return;
+    
+    const touch = e.touches[0];
+    const rect = piece.getBoundingClientRect();
+    
+    animalsGameState.draggedElement = piece;
+    animalsGameState.originalRect = rect;
+    
+    piece.style.position = 'fixed';
+    piece.style.zIndex = '1000';
+    piece.style.left = (touch.clientX - rect.width / 2) + 'px';
+    piece.style.top = (touch.clientY - rect.height / 2) + 'px';
+    piece.classList.add('dragging');
+    
+    playSound('pop');
+}
+
+function handleAnimalTouchMove(e) {
+    e.preventDefault();
+    if (!animalsGameState.draggedElement) return;
+    
+    const touch = e.touches[0];
+    const piece = animalsGameState.draggedElement;
+    const rect = animalsGameState.originalRect;
+    
+    piece.style.left = (touch.clientX - rect.width / 2) + 'px';
+    piece.style.top = (touch.clientY - rect.height / 2) + 'px';
+    
+    const target = document.querySelector('.animal-sound-target');
+    if (target) {
+        const targetRect = target.getBoundingClientRect();
+        if (isOverlapping(touch.clientX, touch.clientY, targetRect)) {
+            target.classList.add('highlight');
+        } else {
+            target.classList.remove('highlight');
+        }
+    }
+}
+
+function handleAnimalTouchEnd(e) {
+    if (!animalsGameState.draggedElement) return;
+    
+    const piece = animalsGameState.draggedElement;
+    const touch = e.changedTouches[0];
+    
+    const target = document.querySelector('.animal-sound-target');
+    if (target) {
+        target.classList.remove('highlight');
+        const targetRect = target.getBoundingClientRect();
+        
+        if (isOverlapping(touch.clientX, touch.clientY, targetRect)) {
+            checkAnimalMatch(piece);
+        }
+    }
+    
+    resetAnimalPiece(piece);
+}
+
+function handleAnimalMouseDown(e) {
+    const piece = e.target.closest('.animal-piece');
+    if (!piece || piece.classList.contains('matched')) return;
+    
+    const rect = piece.getBoundingClientRect();
+    animalsGameState.draggedElement = piece;
+    animalsGameState.originalRect = rect;
+    
+    piece.classList.add('dragging');
+    piece.style.position = 'fixed';
+    piece.style.zIndex = '1000';
+    piece.style.left = (e.clientX - rect.width / 2) + 'px';
+    piece.style.top = (e.clientY - rect.height / 2) + 'px';
+    
+    playSound('pop');
+    
+    const moveHandler = (e) => {
+        piece.style.left = (e.clientX - rect.width / 2) + 'px';
+        piece.style.top = (e.clientY - rect.height / 2) + 'px';
+        
+        const target = document.querySelector('.animal-sound-target');
+        if (target) {
+            const targetRect = target.getBoundingClientRect();
+            if (isOverlapping(e.clientX, e.clientY, targetRect)) {
+                target.classList.add('highlight');
+            } else {
+                target.classList.remove('highlight');
+            }
+        }
+    };
+    
+    const upHandler = (e) => {
+        document.removeEventListener('mousemove', moveHandler);
+        document.removeEventListener('mouseup', upHandler);
+        
+        const target = document.querySelector('.animal-sound-target');
+        if (target) {
+            target.classList.remove('highlight');
+            const targetRect = target.getBoundingClientRect();
+            
+            if (isOverlapping(e.clientX, e.clientY, targetRect)) {
+                checkAnimalMatch(piece);
+            }
+        }
+        
+        resetAnimalPiece(piece);
+    };
+    
+    document.addEventListener('mousemove', moveHandler);
+    document.addEventListener('mouseup', upHandler);
+}
+
+function checkAnimalMatch(piece) {
+    const targetAnimal = animalsGameState.currentAnimal.emoji;
+    const pieceAnimal = piece.dataset.animal;
+    
+    if (pieceAnimal === targetAnimal) {
+        piece.classList.add('matched');
+        animalsGameState.totalStars += animalsGameState.stars;
+        animalsGameState.round++;
+        
+        playSound('correct');
+        showFeedback(true, animalsGameState.stars);
+        
+        setTimeout(nextAnimalRound, 1000);
+    } else {
+        animalsGameState.errors++;
+        animalsGameState.stars = Math.max(1, 3 - animalsGameState.errors);
+        updateStarsDisplay('animals', animalsGameState.stars);
+        
+        playSound('wrong');
+        showFeedback(false);
+        
+        piece.classList.add('wrong-piece');
+        piece.style.opacity = '0.3';
+        piece.style.pointerEvents = 'none';
+    }
+}
+
+function resetAnimalPiece(piece) {
+    piece.classList.remove('dragging');
+    piece.style.position = '';
+    piece.style.zIndex = '';
+    piece.style.left = '';
+    piece.style.top = '';
+    animalsGameState.draggedElement = null;
+    animalsGameState.originalRect = null;
+}
+
+// ===== PUZZLE GAME (Quebra-cabeça simples) =====
+const puzzleImages = [
+    { emoji: '🏠', name: 'casa' },
+    { emoji: '🚗', name: 'carro' },
+    { emoji: '🌳', name: 'árvore' },
+    { emoji: '🌈', name: 'arco-íris' },
+    { emoji: '🚀', name: 'foguete' },
+    { emoji: '🎂', name: 'bolo' },
+    { emoji: '⭐', name: 'estrela' },
+    { emoji: '🌻', name: 'girassol' }
+];
+
+let puzzleGameState = {
+    pieces: [],
+    placedPieces: 0,
+    totalPieces: 4,
+    stars: 3,
+    errors: 0,
+    draggedElement: null,
+    originalRect: null
+};
+
+function initPuzzleGame() {
+    const level = state.currentLevel;
+    document.getElementById('puzzle-level').textContent = level;
+    
+    // Determinar grid baseado no level
+    const gridSize = level <= 2 ? 2 : (level <= 4 ? 3 : 4);
+    puzzleGameState.totalPieces = gridSize * gridSize;
+    puzzleGameState.placedPieces = 0;
+    puzzleGameState.stars = 3;
+    puzzleGameState.errors = 0;
+    
+    updateStarsDisplay('puzzle', 3);
+    
+    // Escolher imagem
+    const image = puzzleImages[Math.floor(Math.random() * puzzleImages.length)];
+    
+    // Criar peças
+    const pieces = [];
+    for (let i = 0; i < puzzleGameState.totalPieces; i++) {
+        pieces.push({ index: i, emoji: image.emoji });
+    }
+    puzzleGameState.pieces = pieces;
+    
+    // Criar grid de destino
+    const targetArea = document.getElementById('puzzle-target');
+    targetArea.innerHTML = '';
+    targetArea.style.gridTemplateColumns = `repeat(${gridSize}, 1fr)`;
+    targetArea.className = `puzzle-grid cols-${gridSize}`;
+    
+    for (let i = 0; i < puzzleGameState.totalPieces; i++) {
+        const slot = document.createElement('div');
+        slot.className = 'puzzle-slot';
+        slot.dataset.index = i;
+        targetArea.appendChild(slot);
+    }
+    
+    // Criar peças embaralhadas
+    const piecesArea = document.getElementById('puzzle-pieces');
+    piecesArea.innerHTML = '';
+    
+    const shuffledPieces = shuffleArray([...pieces]);
+    
+    shuffledPieces.forEach((pieceData, i) => {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'puzzle-piece-wrapper';
+        
+        const piece = document.createElement('div');
+        piece.className = 'puzzle-piece';
+        piece.dataset.index = pieceData.index;
+        piece.innerHTML = `<span class="puzzle-emoji">${pieceData.emoji}</span><span class="puzzle-number">${pieceData.index + 1}</span>`;
+        
+        piece.addEventListener('touchstart', handlePuzzleTouchStart, { passive: false });
+        piece.addEventListener('touchmove', handlePuzzleTouchMove, { passive: false });
+        piece.addEventListener('touchend', handlePuzzleTouchEnd);
+        piece.addEventListener('mousedown', handlePuzzleMouseDown);
+        
+        wrapper.appendChild(piece);
+        piecesArea.appendChild(wrapper);
+    });
+}
+
+function handlePuzzleTouchStart(e) {
+    e.preventDefault();
+    const piece = e.target.closest('.puzzle-piece');
+    if (!piece || piece.classList.contains('placed')) return;
+    
+    const touch = e.touches[0];
+    const rect = piece.getBoundingClientRect();
+    
+    puzzleGameState.draggedElement = piece;
+    puzzleGameState.originalRect = rect;
+    
+    piece.style.position = 'fixed';
+    piece.style.zIndex = '1000';
+    piece.style.left = (touch.clientX - rect.width / 2) + 'px';
+    piece.style.top = (touch.clientY - rect.height / 2) + 'px';
+    piece.classList.add('dragging');
+    
+    playSound('pop');
+}
+
+function handlePuzzleTouchMove(e) {
+    e.preventDefault();
+    if (!puzzleGameState.draggedElement) return;
+    
+    const touch = e.touches[0];
+    const piece = puzzleGameState.draggedElement;
+    const rect = puzzleGameState.originalRect;
+    
+    piece.style.left = (touch.clientX - rect.width / 2) + 'px';
+    piece.style.top = (touch.clientY - rect.height / 2) + 'px';
+    
+    // Highlight slot correto
+    const slots = document.querySelectorAll('.puzzle-slot:not(.filled)');
+    slots.forEach(slot => {
+        const slotRect = slot.getBoundingClientRect();
+        if (isOverlapping(touch.clientX, touch.clientY, slotRect)) {
+            slot.classList.add('highlight');
+        } else {
+            slot.classList.remove('highlight');
+        }
+    });
+}
+
+function handlePuzzleTouchEnd(e) {
+    if (!puzzleGameState.draggedElement) return;
+    
+    const piece = puzzleGameState.draggedElement;
+    const touch = e.changedTouches[0];
+    
+    const slots = document.querySelectorAll('.puzzle-slot:not(.filled)');
+    let placed = false;
+    
+    slots.forEach(slot => {
+        slot.classList.remove('highlight');
+        const slotRect = slot.getBoundingClientRect();
+        
+        if (isOverlapping(touch.clientX, touch.clientY, slotRect) && !placed) {
+            placed = true;
+            checkPuzzlePlacement(piece, slot);
+        }
+    });
+    
+    if (!placed) {
+        resetPuzzlePiece(piece);
+    }
+}
+
+function handlePuzzleMouseDown(e) {
+    const piece = e.target.closest('.puzzle-piece');
+    if (!piece || piece.classList.contains('placed')) return;
+    
+    const rect = piece.getBoundingClientRect();
+    puzzleGameState.draggedElement = piece;
+    puzzleGameState.originalRect = rect;
+    
+    piece.classList.add('dragging');
+    piece.style.position = 'fixed';
+    piece.style.zIndex = '1000';
+    piece.style.left = (e.clientX - rect.width / 2) + 'px';
+    piece.style.top = (e.clientY - rect.height / 2) + 'px';
+    
+    playSound('pop');
+    
+    const moveHandler = (e) => {
+        piece.style.left = (e.clientX - rect.width / 2) + 'px';
+        piece.style.top = (e.clientY - rect.height / 2) + 'px';
+        
+        const slots = document.querySelectorAll('.puzzle-slot:not(.filled)');
+        slots.forEach(slot => {
+            const slotRect = slot.getBoundingClientRect();
+            if (isOverlapping(e.clientX, e.clientY, slotRect)) {
+                slot.classList.add('highlight');
+            } else {
+                slot.classList.remove('highlight');
+            }
+        });
+    };
+    
+    const upHandler = (e) => {
+        document.removeEventListener('mousemove', moveHandler);
+        document.removeEventListener('mouseup', upHandler);
+        
+        const slots = document.querySelectorAll('.puzzle-slot:not(.filled)');
+        let placed = false;
+        
+        slots.forEach(slot => {
+            slot.classList.remove('highlight');
+            const slotRect = slot.getBoundingClientRect();
+            
+            if (isOverlapping(e.clientX, e.clientY, slotRect) && !placed) {
+                placed = true;
+                checkPuzzlePlacement(piece, slot);
+            }
+        });
+        
+        if (!placed) {
+            resetPuzzlePiece(piece);
+        }
+    };
+    
+    document.addEventListener('mousemove', moveHandler);
+    document.addEventListener('mouseup', upHandler);
+}
+
+function checkPuzzlePlacement(piece, slot) {
+    const pieceIndex = parseInt(piece.dataset.index);
+    const slotIndex = parseInt(slot.dataset.index);
+    
+    if (pieceIndex === slotIndex) {
+        // Correto!
+        slot.classList.add('filled');
+        slot.innerHTML = piece.innerHTML;
+        piece.classList.add('placed');
+        piece.style.visibility = 'hidden';
+        puzzleGameState.placedPieces++;
+        
+        playSound('correct');
+        showFeedback(true);
+        
+        resetPuzzlePiece(piece);
+        
+        // Verificar vitória
+        if (puzzleGameState.placedPieces === puzzleGameState.totalPieces) {
+            setTimeout(() => showVictoryWithStars(puzzleGameState.stars), 500);
+        }
+    } else {
+        // Errado!
+        puzzleGameState.errors++;
+        puzzleGameState.stars = Math.max(1, 3 - puzzleGameState.errors);
+        updateStarsDisplay('puzzle', puzzleGameState.stars);
+        
+        playSound('wrong');
+        showFeedback(false);
+        resetPuzzlePiece(piece);
+    }
+}
+
+function resetPuzzlePiece(piece) {
+    piece.classList.remove('dragging');
+    piece.style.position = '';
+    piece.style.zIndex = '';
+    piece.style.left = '';
+    piece.style.top = '';
+    puzzleGameState.draggedElement = null;
+    puzzleGameState.originalRect = null;
+}

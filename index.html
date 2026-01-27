@@ -180,6 +180,84 @@
         </div>
     </div>
 
+    <!-- Tela do Jogo: Números -->
+    <div id="game-numbers" class="screen game-screen">
+        <div class="game-header">
+            <button class="back-btn" onclick="exitGame()">
+                <span>←</span>
+            </button>
+            <div class="game-info">
+                <div class="level-display">
+                    <span class="level-label">Fase</span>
+                    <span class="level-number" id="numbers-level">1</span>
+                </div>
+                <div class="stars-display">
+                    <span id="numbers-stars">⭐⭐⭐</span>
+                </div>
+            </div>
+            <button class="sound-btn" onclick="toggleSound()">
+                <span>🔊</span>
+            </button>
+        </div>
+        
+        <div class="game-area numbers-game-area">
+            <div class="numbers-question" id="numbers-question"></div>
+            <div class="numbers-options" id="numbers-options"></div>
+        </div>
+    </div>
+
+    <!-- Tela do Jogo: Animais -->
+    <div id="game-animals" class="screen game-screen">
+        <div class="game-header">
+            <button class="back-btn" onclick="exitGame()">
+                <span>←</span>
+            </button>
+            <div class="game-info">
+                <div class="level-display">
+                    <span class="level-label">Fase</span>
+                    <span class="level-number" id="animals-level">1</span>
+                </div>
+                <div class="stars-display">
+                    <span id="animals-stars">⭐⭐⭐</span>
+                </div>
+            </div>
+            <button class="sound-btn" onclick="toggleSound()">
+                <span>🔊</span>
+            </button>
+        </div>
+        
+        <div class="game-area animals-game-area">
+            <div class="animals-question" id="animals-question"></div>
+            <div class="animals-options" id="animals-options"></div>
+        </div>
+    </div>
+
+    <!-- Tela do Jogo: Quebra-cabeça -->
+    <div id="game-puzzle" class="screen game-screen">
+        <div class="game-header">
+            <button class="back-btn" onclick="exitGame()">
+                <span>←</span>
+            </button>
+            <div class="game-info">
+                <div class="level-display">
+                    <span class="level-label">Fase</span>
+                    <span class="level-number" id="puzzle-level">1</span>
+                </div>
+                <div class="stars-display">
+                    <span id="puzzle-stars">⭐⭐⭐</span>
+                </div>
+            </div>
+            <button class="sound-btn" onclick="toggleSound()">
+                <span>🔊</span>
+            </button>
+        </div>
+        
+        <div class="game-area puzzle-game-area">
+            <div class="puzzle-target" id="puzzle-target"></div>
+            <div class="puzzle-pieces" id="puzzle-pieces"></div>
+        </div>
+    </div>
+
     <!-- Tela de Vitória -->
     <div id="victory-screen" class="screen">
         <div class="victory-content">

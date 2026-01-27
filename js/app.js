@@ -40,8 +40,7 @@ const gamesData = {
         icon: '🔢',
         color: '#45B7D1',
         minAge: 3,
-        maxAge: 7,
-        locked: true
+        maxAge: 7
     },
     animals: {
         id: 'animals',
@@ -49,8 +48,7 @@ const gamesData = {
         icon: '🦁',
         color: '#96CEB4',
         minAge: 2,
-        maxAge: 6,
-        locked: true
+        maxAge: 6
     },
     puzzle: {
         id: 'puzzle',
@@ -58,8 +56,7 @@ const gamesData = {
         icon: '🧩',
         color: '#DDA0DD',
         minAge: 4,
-        maxAge: 7,
-        locked: true
+        maxAge: 7
     }
 };
 
@@ -204,6 +201,18 @@ function startGame(gameId) {
             showScreen('game-memory');
             initMemoryGame();
             break;
+        case 'numbers':
+            showScreen('game-numbers');
+            initNumbersGame();
+            break;
+        case 'animals':
+            showScreen('game-animals');
+            initAnimalsGame();
+            break;
+        case 'puzzle':
+            showScreen('game-puzzle');
+            initPuzzleGame();
+            break;
     }
 }
 
@@ -227,6 +236,18 @@ function nextLevel() {
         case 'memory':
             showScreen('game-memory');
             initMemoryGame();
+            break;
+        case 'numbers':
+            showScreen('game-numbers');
+            initNumbersGame();
+            break;
+        case 'animals':
+            showScreen('game-animals');
+            initAnimalsGame();
+            break;
+        case 'puzzle':
+            showScreen('game-puzzle');
+            initPuzzleGame();
             break;
     }
 }
