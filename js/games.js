@@ -274,12 +274,12 @@ function isOverlapping(x, y, rect) {
 
 // ===== COLORS GAME (DRAG & DROP - IGUAL FORMAS) =====
 const colorsData = [
-    { color: '#FF6B6B', name: 'vermelho' },
-    { color: '#4ECDC4', name: 'verde' },
-    { color: '#45B7D1', name: 'azul' },
-    { color: '#FFEAA7', name: 'amarelo' },
-    { color: '#DDA0DD', name: 'rosa' },
-    { color: '#FF8C00', name: 'laranja' }
+    { color: '#FF0000', name: 'vermelho' },
+    { color: '#00CC00', name: 'verde' },
+    { color: '#0066FF', name: 'azul' },
+    { color: '#FFDD00', name: 'amarelo' },
+    { color: '#FF00FF', name: 'rosa' },
+    { color: '#FF8800', name: 'laranja' }
 ];
 
 let colorsGameState = {
