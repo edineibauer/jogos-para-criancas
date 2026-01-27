@@ -29,7 +29,9 @@ let shapesGameState = {
     draggedElement: null,
     startX: 0,
     startY: 0,
-    originalRect: null
+    originalRect: null,
+    errors: 0,
+    stars: 3
 };
 
 function initShapesGame() {
@@ -49,6 +51,9 @@ function initShapesGame() {
     
     shapesGameState.targets = shapes;
     shapesGameState.matched = 0;
+    shapesGameState.errors = 0;
+    shapesGameState.stars = 3;
+    updateStarsDisplay('shapes', 3);
     
     const targetsContainer = document.getElementById('shapes-targets');
     targetsContainer.innerHTML = '';
@@ -159,9 +164,14 @@ function handleShapeTouchEnd(e) {
                 showFeedback(true);
                 
                 if (shapesGameState.matched === shapesGameState.targets.length) {
-                    setTimeout(() => showVictory('Muito bem! 🎉'), 500);
+                    setTimeout(() => showVictoryWithStars(shapesGameState.stars), 500);
                 }
             } else {
+                // Diminuir estrelas ao errar
+                shapesGameState.errors++;
+                shapesGameState.stars = Math.max(1, 3 - shapesGameState.errors);
+                updateStarsDisplay('shapes', shapesGameState.stars);
+                
                 playSound('wrong');
                 showFeedback(false);
             }
@@ -231,9 +241,14 @@ function handleShapeMouseDown(e) {
                     showFeedback(true);
                     
                     if (shapesGameState.matched === shapesGameState.targets.length) {
-                        setTimeout(() => showVictory('Muito bem! 🎉'), 500);
+                        setTimeout(() => showVictoryWithStars(shapesGameState.stars), 500);
                     }
                 } else {
+                    // Diminuir estrelas ao errar
+                    shapesGameState.errors++;
+                    shapesGameState.stars = Math.max(1, 3 - shapesGameState.errors);
+                    updateStarsDisplay('shapes', shapesGameState.stars);
+                    
                     playSound('wrong');
                     showFeedback(false);
                 }
