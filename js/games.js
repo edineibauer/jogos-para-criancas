@@ -1203,252 +1203,159 @@ function resetAnimalPiece(piece) {
     animalsGameState.originalRect = null;
 }
 
-// ===== PUZZLE GAME (Quebra-cabeça simples) =====
-const puzzleImages = [
-    { emoji: '🏠', name: 'casa' },
-    { emoji: '🚗', name: 'carro' },
-    { emoji: '🌳', name: 'árvore' },
-    { emoji: '🌈', name: 'arco-íris' },
-    { emoji: '🚀', name: 'foguete' },
-    { emoji: '🎂', name: 'bolo' },
-    { emoji: '⭐', name: 'estrela' },
-    { emoji: '🌻', name: 'girassol' }
+// ===== PUZZLE GAME (Completar Padrões/Sequências) =====
+const patternSets = [
+    ['🍎', '🍊', '🍎', '🍊'],
+    ['🔵', '🔴', '🔵', '🔴'],
+    ['⭐', '🌙', '⭐', '🌙'],
+    ['🐶', '🐱', '🐶', '🐱'],
+    ['🌸', '🌺', '🌸', '🌺'],
+    ['🚗', '🚌', '🚗', '🚌'],
+    ['🍎', '🍎', '🍊', '🍊'],
+    ['🔵', '🔵', '🔴', '🔵'],
+    ['⭐', '⭐', '🌙', '⭐'],
+    ['🍎', '🍊', '🍋', '🍎'],
+    ['🔴', '🟡', '🔵', '🔴'],
+    ['🐶', '🐱', '🐰', '🐶']
 ];
 
 let puzzleGameState = {
-    pieces: [],
-    placedPieces: 0,
-    totalPieces: 4,
+    currentPattern: [],
+    correctAnswer: null,
     stars: 3,
     errors: 0,
-    draggedElement: null,
-    originalRect: null
+    round: 0,
+    totalRounds: 5,
+    totalStars: 0
 };
 
 function initPuzzleGame() {
     const level = state.currentLevel;
     document.getElementById('puzzle-level').textContent = level;
     
-    // Determinar grid baseado no level
-    const gridSize = level <= 2 ? 2 : (level <= 4 ? 3 : 4);
-    puzzleGameState.totalPieces = gridSize * gridSize;
-    puzzleGameState.placedPieces = 0;
     puzzleGameState.stars = 3;
     puzzleGameState.errors = 0;
+    puzzleGameState.round = 0;
+    puzzleGameState.totalRounds = 4 + level;
+    puzzleGameState.totalStars = 0;
     
     updateStarsDisplay('puzzle', 3);
-    
-    // Escolher imagem
-    const image = puzzleImages[Math.floor(Math.random() * puzzleImages.length)];
-    
-    // Criar peças
-    const pieces = [];
-    for (let i = 0; i < puzzleGameState.totalPieces; i++) {
-        pieces.push({ index: i, emoji: image.emoji });
+    nextPatternRound();
+}
+
+function nextPatternRound() {
+    if (puzzleGameState.round >= puzzleGameState.totalRounds) {
+        const maxStars = puzzleGameState.totalRounds * 3;
+        const percent = (puzzleGameState.totalStars / maxStars) * 100;
+        let finalStars = percent >= 80 ? 3 : (percent >= 50 ? 2 : 1);
+        showVictoryWithStars(finalStars);
+        return;
     }
-    puzzleGameState.pieces = pieces;
     
-    // Criar grid de destino
+    puzzleGameState.stars = 3;
+    puzzleGameState.errors = 0;
+    updateStarsDisplay('puzzle', 3);
+    
+    // Escolher padrão aleatório
+    const pattern = patternSets[Math.floor(Math.random() * patternSets.length)];
+    const patternLength = Math.min(3 + Math.floor(state.currentLevel / 2), 5);
+    
+    // Criar sequência e determinar resposta correta
+    const sequence = [];
+    for (let i = 0; i < patternLength; i++) {
+        sequence.push(pattern[i % pattern.length]);
+    }
+    
+    // A resposta correta é o próximo item do padrão
+    const correctAnswer = pattern[patternLength % pattern.length];
+    puzzleGameState.correctAnswer = correctAnswer;
+    puzzleGameState.currentPattern = pattern;
+    
+    // Mostrar sequência com último item como "?"
     const targetArea = document.getElementById('puzzle-target');
-    targetArea.innerHTML = '';
-    targetArea.style.gridTemplateColumns = `repeat(${gridSize}, 1fr)`;
-    targetArea.className = `puzzle-grid cols-${gridSize}`;
+    targetArea.innerHTML = `
+        <div class="pattern-sequence">
+            ${sequence.map(item => `<span class="pattern-item">${item}</span>`).join('')}
+            <span class="pattern-item pattern-question">?</span>
+        </div>
+    `;
     
-    for (let i = 0; i < puzzleGameState.totalPieces; i++) {
-        const slot = document.createElement('div');
-        slot.className = 'puzzle-slot';
-        slot.dataset.index = i;
-        targetArea.appendChild(slot);
+    // Criar opções (3 opções, incluindo a correta)
+    const uniqueItems = [...new Set(pattern)];
+    let options = [correctAnswer];
+    
+    // Adicionar outras opções
+    const otherEmojis = ['🍎', '🍊', '🍋', '🔵', '🔴', '🟡', '⭐', '🌙', '🐶', '🐱', '🐰', '🌸', '🌺', '🚗', '🚌'];
+    const availableOptions = otherEmojis.filter(e => e !== correctAnswer);
+    
+    while (options.length < 3) {
+        const rand = availableOptions[Math.floor(Math.random() * availableOptions.length)];
+        if (!options.includes(rand)) options.push(rand);
     }
     
-    // Criar peças embaralhadas
+    options = shuffleArray(options);
+    
+    // Mostrar opções como botões clicáveis
     const piecesArea = document.getElementById('puzzle-pieces');
     piecesArea.innerHTML = '';
     
-    const shuffledPieces = shuffleArray([...pieces]);
-    
-    shuffledPieces.forEach((pieceData, i) => {
-        const wrapper = document.createElement('div');
-        wrapper.className = 'puzzle-piece-wrapper';
-        
-        const piece = document.createElement('div');
-        piece.className = 'puzzle-piece';
-        piece.dataset.index = pieceData.index;
-        piece.innerHTML = `<span class="puzzle-emoji">${pieceData.emoji}</span><span class="puzzle-number">${pieceData.index + 1}</span>`;
-        
-        piece.addEventListener('touchstart', handlePuzzleTouchStart, { passive: false });
-        piece.addEventListener('touchmove', handlePuzzleTouchMove, { passive: false });
-        piece.addEventListener('touchend', handlePuzzleTouchEnd);
-        piece.addEventListener('mousedown', handlePuzzleMouseDown);
-        
-        wrapper.appendChild(piece);
-        piecesArea.appendChild(wrapper);
+    options.forEach(option => {
+        const btn = document.createElement('button');
+        btn.className = 'pattern-option';
+        btn.textContent = option;
+        btn.dataset.value = option;
+        btn.onclick = () => checkPatternAnswer(option, btn);
+        piecesArea.appendChild(btn);
     });
 }
 
-function handlePuzzleTouchStart(e) {
-    if (e.cancelable) e.preventDefault();
-    const piece = e.target.closest('.puzzle-piece');
-    if (!piece || piece.classList.contains('placed')) return;
-    
-    const touch = e.touches[0];
-    const rect = piece.getBoundingClientRect();
-    
-    puzzleGameState.draggedElement = piece;
-    puzzleGameState.originalRect = rect;
-    
-    piece.style.position = 'fixed';
-    piece.style.zIndex = '1000';
-    piece.style.left = (touch.clientX - rect.width / 2) + 'px';
-    piece.style.top = (touch.clientY - rect.height / 2) + 'px';
-    piece.classList.add('dragging');
-    
-    playSound('pop');
-}
-
-function handlePuzzleTouchMove(e) {
-    if (e.cancelable) e.preventDefault();
-    if (!puzzleGameState.draggedElement) return;
-    
-    const touch = e.touches[0];
-    const piece = puzzleGameState.draggedElement;
-    const rect = puzzleGameState.originalRect;
-    
-    piece.style.left = (touch.clientX - rect.width / 2) + 'px';
-    piece.style.top = (touch.clientY - rect.height / 2) + 'px';
-    
-    // Highlight slot correto
-    const slots = document.querySelectorAll('.puzzle-slot:not(.filled)');
-    slots.forEach(slot => {
-        const slotRect = slot.getBoundingClientRect();
-        if (isOverlapping(touch.clientX, touch.clientY, slotRect)) {
-            slot.classList.add('highlight');
-        } else {
-            slot.classList.remove('highlight');
-        }
-    });
-}
-
-function handlePuzzleTouchEnd(e) {
-    if (!puzzleGameState.draggedElement) return;
-    
-    const piece = puzzleGameState.draggedElement;
-    const touch = e.changedTouches[0];
-    
-    const slots = document.querySelectorAll('.puzzle-slot:not(.filled)');
-    let placed = false;
-    
-    slots.forEach(slot => {
-        slot.classList.remove('highlight');
-        const slotRect = slot.getBoundingClientRect();
+function checkPatternAnswer(selected, btn) {
+    if (selected === puzzleGameState.correctAnswer) {
+        // ACERTOU!
+        btn.classList.add('correct');
+        puzzleGameState.totalStars += puzzleGameState.stars;
+        puzzleGameState.round++;
         
-        if (isOverlapping(touch.clientX, touch.clientY, slotRect) && !placed) {
-            placed = true;
-            checkPuzzlePlacement(piece, slot);
-        }
-    });
-    
-    if (!placed) {
-        resetPuzzlePiece(piece);
-    }
-}
-
-function handlePuzzleMouseDown(e) {
-    const piece = e.target.closest('.puzzle-piece');
-    if (!piece || piece.classList.contains('placed')) return;
-    
-    const rect = piece.getBoundingClientRect();
-    puzzleGameState.draggedElement = piece;
-    puzzleGameState.originalRect = rect;
-    
-    piece.classList.add('dragging');
-    piece.style.position = 'fixed';
-    piece.style.zIndex = '1000';
-    piece.style.left = (e.clientX - rect.width / 2) + 'px';
-    piece.style.top = (e.clientY - rect.height / 2) + 'px';
-    
-    playSound('pop');
-    
-    const moveHandler = (e) => {
-        piece.style.left = (e.clientX - rect.width / 2) + 'px';
-        piece.style.top = (e.clientY - rect.height / 2) + 'px';
-        
-        const slots = document.querySelectorAll('.puzzle-slot:not(.filled)');
-        slots.forEach(slot => {
-            const slotRect = slot.getBoundingClientRect();
-            if (isOverlapping(e.clientX, e.clientY, slotRect)) {
-                slot.classList.add('highlight');
-            } else {
-                slot.classList.remove('highlight');
-            }
-        });
-    };
-    
-    const upHandler = (e) => {
-        document.removeEventListener('mousemove', moveHandler);
-        document.removeEventListener('mouseup', upHandler);
-        
-        const slots = document.querySelectorAll('.puzzle-slot:not(.filled)');
-        let placed = false;
-        
-        slots.forEach(slot => {
-            slot.classList.remove('highlight');
-            const slotRect = slot.getBoundingClientRect();
-            
-            if (isOverlapping(e.clientX, e.clientY, slotRect) && !placed) {
-                placed = true;
-                checkPuzzlePlacement(piece, slot);
-            }
-        });
-        
-        if (!placed) {
-            resetPuzzlePiece(piece);
-        }
-    };
-    
-    document.addEventListener('mousemove', moveHandler);
-    document.addEventListener('mouseup', upHandler);
-}
-
-function checkPuzzlePlacement(piece, slot) {
-    const pieceIndex = parseInt(piece.dataset.index);
-    const slotIndex = parseInt(slot.dataset.index);
-    
-    if (pieceIndex === slotIndex) {
-        // Correto!
-        slot.classList.add('filled');
-        slot.innerHTML = piece.innerHTML;
-        piece.classList.add('placed');
-        piece.style.visibility = 'hidden';
-        puzzleGameState.placedPieces++;
+        // Mostrar resposta correta no padrão
+        document.querySelector('.pattern-question').textContent = selected;
+        document.querySelector('.pattern-question').classList.remove('pattern-question');
         
         playSound('correct');
-        showFeedback(true);
+        showFeedback(true, puzzleGameState.stars);
         
-        resetPuzzlePiece(piece);
+        // Desabilitar outros botões
+        document.querySelectorAll('.pattern-option').forEach(b => b.disabled = true);
         
-        // Verificar vitória
-        if (puzzleGameState.placedPieces === puzzleGameState.totalPieces) {
-            setTimeout(() => showVictoryWithStars(puzzleGameState.stars), 500);
-        }
+        setTimeout(nextPatternRound, 1200);
     } else {
-        // Errado!
+        // ERROU!
+        btn.classList.add('wrong');
+        btn.disabled = true;
         puzzleGameState.errors++;
         puzzleGameState.stars = Math.max(1, 3 - puzzleGameState.errors);
         updateStarsDisplay('puzzle', puzzleGameState.stars);
         
         playSound('wrong');
         showFeedback(false);
-        resetPuzzlePiece(piece);
+        
+        // Se errou 2 vezes, mostra a resposta e avança
+        if (puzzleGameState.errors >= 2) {
+            puzzleGameState.totalStars += puzzleGameState.stars;
+            puzzleGameState.round++;
+            
+            document.querySelector('.pattern-question').textContent = puzzleGameState.correctAnswer;
+            document.querySelector('.pattern-question').classList.remove('pattern-question');
+            
+            document.querySelectorAll('.pattern-option').forEach(b => {
+                if (b.dataset.value === puzzleGameState.correctAnswer) {
+                    b.classList.add('correct');
+                }
+                b.disabled = true;
+            });
+            
+            setTimeout(nextPatternRound, 1500);
+        }
     }
 }
 
-function resetPuzzlePiece(piece) {
-    piece.classList.remove('dragging');
-    piece.style.position = '';
-    piece.style.zIndex = '';
-    piece.style.left = '';
-    piece.style.top = '';
-    puzzleGameState.draggedElement = null;
-    puzzleGameState.originalRect = null;
-}
+// Funções antigas do puzzle removidas - agora usa clique simples
