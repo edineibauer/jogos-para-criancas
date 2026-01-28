@@ -1,29 +1,19 @@
 // ===== SHAPES GAME =====
-// Formas organizadas por dificuldade
 const allShapes = [
     { shape: '🔵', name: 'círculo' },
     { shape: '🟥', name: 'quadrado' },
     { shape: '🔺', name: 'triângulo' },
     { shape: '⭐', name: 'estrela' },
     { shape: '💜', name: 'coração' },
-    { shape: '🔷', name: 'losango' },
-    { shape: '⬛', name: 'retângulo' },
-    { shape: '⬡', name: 'hexágono' },
-    { shape: '🔶', name: 'laranja' },
-    { shape: '💠', name: 'diamante' },
-    { shape: '🔻', name: 'triângulo invertido' },
-    { shape: '⭕', name: 'anel' }
+    { shape: '🔷', name: 'losango' }
 ];
 
-// Total de 10 fases
 const TOTAL_SHAPE_LEVELS = 10;
 
 let shapesGameState = {
     targets: [],
     matched: 0,
     draggedElement: null,
-    startX: 0,
-    startY: 0,
     originalRect: null,
     errors: 0,
     stars: 3
@@ -32,7 +22,6 @@ let shapesGameState = {
 function initShapesGame() {
     const level = state.currentLevel;
     
-    // Verificar se completou todas as fases
     if (level > TOTAL_SHAPE_LEVELS) {
         showGameComplete();
         return;
@@ -40,42 +29,15 @@ function initShapesGame() {
     
     document.getElementById('shapes-level').textContent = `${level}/${TOTAL_SHAPE_LEVELS}`;
     
-    // Progressão clara:
-    // Fase 1-2: 2 alvos, 3 opções (1 extra)
-    // Fase 3-4: 3 alvos, 4 opções (1 extra)
-    // Fase 5-6: 3 alvos, 5 opções (2 extras)
-    // Fase 7-8: 4 alvos, 6 opções (2 extras)
-    // Fase 9-10: 4 alvos, 7 opções (3 extras)
+    let numTargets = Math.min(2 + Math.floor(level / 3), 4);
+    let numOptions = numTargets + Math.min(Math.floor(level / 2), 3);
     
-    let numTargets, numOptions;
-    if (level <= 2) {
-        numTargets = 2;
-        numOptions = 3;
-    } else if (level <= 4) {
-        numTargets = 3;
-        numOptions = 4;
-    } else if (level <= 6) {
-        numTargets = 3;
-        numOptions = 5;
-    } else if (level <= 8) {
-        numTargets = 4;
-        numOptions = 6;
-    } else {
-        numTargets = 4;
-        numOptions = 7;
-    }
-    
-    // Formas disponíveis aumentam com o nível
     const availableShapes = allShapes.slice(0, Math.min(3 + level, allShapes.length));
-    
-    // Selecionar formas alvo
     const targetShapes = getRandomItems(availableShapes, numTargets);
     
-    // Adicionar formas extras (distratores)
     let allOptions = [...targetShapes];
     const distractors = availableShapes.filter(s => !targetShapes.includes(s));
-    const extraCount = numOptions - numTargets;
-    allOptions = [...allOptions, ...getRandomItems(distractors, Math.min(extraCount, distractors.length))];
+    allOptions = [...allOptions, ...getRandomItems(distractors, numOptions - numTargets)];
     
     shapesGameState.targets = targetShapes;
     shapesGameState.matched = 0;
@@ -90,7 +52,6 @@ function initShapesGame() {
         const target = document.createElement('div');
         target.className = 'shape-target';
         target.dataset.shape = item.shape;
-        target.dataset.index = index;
         target.innerHTML = `<span class="shape-icon">${item.shape}</span>`;
         targetsContainer.appendChild(target);
     });
@@ -98,10 +59,7 @@ function initShapesGame() {
     const piecesContainer = document.getElementById('shapes-pieces');
     piecesContainer.innerHTML = '';
     
-    const shuffledPieces = shuffleArray([...allOptions]);
-    
-    shuffledPieces.forEach((item, index) => {
-        // Wrapper para manter o espaço quando arrastar
+    shuffleArray(allOptions).forEach(item => {
         const wrapper = document.createElement('div');
         wrapper.className = 'shape-piece-wrapper';
         
@@ -130,15 +88,11 @@ function handleShapeTouchStart(e) {
     
     shapesGameState.draggedElement = piece;
     shapesGameState.originalRect = rect;
-    shapesGameState.startX = touch.clientX;
-    shapesGameState.startY = touch.clientY;
     
-    // Posicionar imediatamente no dedo
     piece.style.position = 'fixed';
     piece.style.zIndex = '1000';
     piece.style.left = (touch.clientX - rect.width / 2) + 'px';
     piece.style.top = (touch.clientY - rect.height / 2) + 'px';
-    piece.style.transition = 'none'; // Remover transições durante arraste
     piece.classList.add('dragging');
     
     playSound('pop');
@@ -152,19 +106,12 @@ function handleShapeTouchMove(e) {
     const piece = shapesGameState.draggedElement;
     const rect = shapesGameState.originalRect;
     
-    // Mover diretamente com o dedo (sem delay)
     piece.style.left = (touch.clientX - rect.width / 2) + 'px';
     piece.style.top = (touch.clientY - rect.height / 2) + 'px';
     
-    // Highlight target
-    const targets = document.querySelectorAll('.shape-target:not(.filled)');
-    targets.forEach(target => {
+    document.querySelectorAll('.shape-target:not(.filled)').forEach(target => {
         const targetRect = target.getBoundingClientRect();
-        if (isOverlapping(touch.clientX, touch.clientY, targetRect)) {
-            target.classList.add('highlight');
-        } else {
-            target.classList.remove('highlight');
-        }
+        target.classList.toggle('highlight', isOverlapping(touch.clientX, touch.clientY, targetRect));
     });
 }
 
@@ -174,20 +121,15 @@ function handleShapeTouchEnd(e) {
     const piece = shapesGameState.draggedElement;
     const touch = e.changedTouches[0];
     
-    const targets = document.querySelectorAll('.shape-target:not(.filled)');
-    let matched = false;
-    
-    targets.forEach(target => {
+    document.querySelectorAll('.shape-target:not(.filled)').forEach(target => {
         target.classList.remove('highlight');
         const targetRect = target.getBoundingClientRect();
         
         if (isOverlapping(touch.clientX, touch.clientY, targetRect)) {
             if (target.dataset.shape === piece.dataset.shape) {
-                matched = true;
                 target.classList.add('filled');
                 piece.classList.add('matched');
                 shapesGameState.matched++;
-                
                 playSound('correct');
                 showFeedback(true);
                 
@@ -195,27 +137,21 @@ function handleShapeTouchEnd(e) {
                     setTimeout(() => showVictoryWithStars(shapesGameState.stars), 500);
                 }
             } else {
-                // Diminuir estrelas ao errar
                 shapesGameState.errors++;
                 shapesGameState.stars = Math.max(1, 3 - shapesGameState.errors);
                 updateStarsDisplay('shapes', shapesGameState.stars);
-                
                 playSound('wrong');
                 showFeedback(false);
             }
         }
     });
     
-    // Resetar posição
     piece.classList.remove('dragging');
     piece.style.position = '';
     piece.style.zIndex = '';
     piece.style.left = '';
     piece.style.top = '';
-    piece.style.transition = '';
-    
     shapesGameState.draggedElement = null;
-    shapesGameState.originalRect = null;
 }
 
 function handleShapeMouseDown(e) {
@@ -229,7 +165,6 @@ function handleShapeMouseDown(e) {
     piece.classList.add('dragging');
     piece.style.position = 'fixed';
     piece.style.zIndex = '1000';
-    piece.style.transition = 'none';
     piece.style.left = (e.clientX - rect.width / 2) + 'px';
     piece.style.top = (e.clientY - rect.height / 2) + 'px';
     
@@ -239,14 +174,9 @@ function handleShapeMouseDown(e) {
         piece.style.left = (e.clientX - rect.width / 2) + 'px';
         piece.style.top = (e.clientY - rect.height / 2) + 'px';
         
-        const targets = document.querySelectorAll('.shape-target:not(.filled)');
-        targets.forEach(target => {
+        document.querySelectorAll('.shape-target:not(.filled)').forEach(target => {
             const targetRect = target.getBoundingClientRect();
-            if (isOverlapping(e.clientX, e.clientY, targetRect)) {
-                target.classList.add('highlight');
-            } else {
-                target.classList.remove('highlight');
-            }
+            target.classList.toggle('highlight', isOverlapping(e.clientX, e.clientY, targetRect));
         });
     };
     
@@ -254,9 +184,7 @@ function handleShapeMouseDown(e) {
         document.removeEventListener('mousemove', moveHandler);
         document.removeEventListener('mouseup', upHandler);
         
-        const targets = document.querySelectorAll('.shape-target:not(.filled)');
-        
-        targets.forEach(target => {
+        document.querySelectorAll('.shape-target:not(.filled)').forEach(target => {
             target.classList.remove('highlight');
             const targetRect = target.getBoundingClientRect();
             
@@ -272,11 +200,9 @@ function handleShapeMouseDown(e) {
                         setTimeout(() => showVictoryWithStars(shapesGameState.stars), 500);
                     }
                 } else {
-                    // Diminuir estrelas ao errar
                     shapesGameState.errors++;
                     shapesGameState.stars = Math.max(1, 3 - shapesGameState.errors);
                     updateStarsDisplay('shapes', shapesGameState.stars);
-                    
                     playSound('wrong');
                     showFeedback(false);
                 }
@@ -288,7 +214,6 @@ function handleShapeMouseDown(e) {
         piece.style.zIndex = '';
         piece.style.left = '';
         piece.style.top = '';
-        piece.style.transition = '';
         shapesGameState.draggedElement = null;
     };
     
@@ -300,14 +225,14 @@ function isOverlapping(x, y, rect) {
     return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
 }
 
-// ===== COLORS GAME (DRAG & DROP - IGUAL FORMAS) =====
+// ===== COLORS GAME =====
 const colorsData = [
-    { color: '#FF0000', name: 'vermelho' },
-    { color: '#00CC00', name: 'verde' },
-    { color: '#0066FF', name: 'azul' },
-    { color: '#FFDD00', name: 'amarelo' },
-    { color: '#FF00FF', name: 'rosa' },
-    { color: '#FF8800', name: 'laranja' }
+    { color: '#FF0000', name: 'vermelho', emoji: '🔴' },
+    { color: '#00CC00', name: 'verde', emoji: '🟢' },
+    { color: '#0066FF', name: 'azul', emoji: '🔵' },
+    { color: '#FFDD00', name: 'amarelo', emoji: '🟡' },
+    { color: '#FF00FF', name: 'rosa', emoji: '🟣' },
+    { color: '#FF8800', name: 'laranja', emoji: '🟠' }
 ];
 
 let colorsGameState = {
@@ -316,9 +241,7 @@ let colorsGameState = {
     errors: 0,
     round: 0,
     totalRounds: 5,
-    totalStars: 0,
-    draggedElement: null,
-    originalRect: null
+    totalStars: 0
 };
 
 function initColorsGame() {
@@ -337,212 +260,57 @@ function initColorsGame() {
 
 function nextColorRound() {
     if (colorsGameState.round >= colorsGameState.totalRounds) {
-        const maxStars = colorsGameState.totalRounds * 3;
-        const percent = (colorsGameState.totalStars / maxStars) * 100;
-        let finalStars = percent >= 80 ? 3 : (percent >= 50 ? 2 : 1);
-        showVictoryWithStars(finalStars);
+        const percent = (colorsGameState.totalStars / (colorsGameState.totalRounds * 3)) * 100;
+        showVictoryWithStars(percent >= 80 ? 3 : (percent >= 50 ? 2 : 1));
         return;
     }
     
-    // Reset para nova rodada
     colorsGameState.stars = 3;
     colorsGameState.errors = 0;
     updateStarsDisplay('colors', 3);
     
-    // Escolher 3 cores aleatórias
     const options = getRandomItems(colorsData, 3);
     const target = options[Math.floor(Math.random() * options.length)];
     colorsGameState.currentTarget = target;
     
-    // Criar área de target (onde soltar)
     const questionDiv = document.getElementById('color-question');
     questionDiv.innerHTML = `
-        <div class="color-target" data-color="${target.color}">
-            <div class="color-target-inner" style="background: ${target.color}"></div>
+        <div class="color-target-display">
+            <span class="color-emoji">${target.emoji}</span>
+            <span class="color-name">Encontre o ${target.name}!</span>
         </div>
     `;
     
-    // Criar bolinhas arrastáveis
     const optionsDiv = document.getElementById('color-options');
     optionsDiv.innerHTML = '';
     
     shuffleArray(options).forEach(option => {
-        const wrapper = document.createElement('div');
-        wrapper.className = 'color-piece-wrapper';
-        
-        const piece = document.createElement('div');
-        piece.className = 'color-piece';
-        piece.style.background = option.color;
-        piece.dataset.color = option.color;
-        
-        piece.addEventListener('touchstart', handleColorTouchStart, { passive: false });
-        piece.addEventListener('touchmove', handleColorTouchMove, { passive: false });
-        piece.addEventListener('touchend', handleColorTouchEnd);
-        piece.addEventListener('mousedown', handleColorMouseDown);
-        
-        wrapper.appendChild(piece);
-        optionsDiv.appendChild(wrapper);
+        const btn = document.createElement('button');
+        btn.className = 'color-option-btn';
+        btn.style.background = option.color;
+        btn.dataset.color = option.color;
+        btn.onclick = () => checkColorAnswer(option, btn);
+        optionsDiv.appendChild(btn);
     });
 }
 
-function handleColorTouchStart(e) {
-    if (e.cancelable) e.preventDefault();
-    const piece = e.target.closest('.color-piece');
-    if (!piece || piece.classList.contains('matched')) return;
-    
-    const touch = e.touches[0];
-    const rect = piece.getBoundingClientRect();
-    
-    colorsGameState.draggedElement = piece;
-    colorsGameState.originalRect = rect;
-    
-    piece.style.position = 'fixed';
-    piece.style.zIndex = '1000';
-    piece.style.left = (touch.clientX - rect.width / 2) + 'px';
-    piece.style.top = (touch.clientY - rect.height / 2) + 'px';
-    piece.classList.add('dragging');
-    
-    playSound('pop');
-}
-
-function handleColorTouchMove(e) {
-    if (e.cancelable) e.preventDefault();
-    if (!colorsGameState.draggedElement) return;
-    
-    const touch = e.touches[0];
-    const piece = colorsGameState.draggedElement;
-    const rect = colorsGameState.originalRect;
-    
-    piece.style.left = (touch.clientX - rect.width / 2) + 'px';
-    piece.style.top = (touch.clientY - rect.height / 2) + 'px';
-    
-    // Highlight target
-    const target = document.querySelector('.color-target');
-    if (target) {
-        const targetRect = target.getBoundingClientRect();
-        if (isOverlapping(touch.clientX, touch.clientY, targetRect)) {
-            target.classList.add('highlight');
-        } else {
-            target.classList.remove('highlight');
-        }
-    }
-}
-
-function handleColorTouchEnd(e) {
-    if (!colorsGameState.draggedElement) return;
-    
-    const piece = colorsGameState.draggedElement;
-    const touch = e.changedTouches[0];
-    
-    const target = document.querySelector('.color-target');
-    if (target) {
-        target.classList.remove('highlight');
-        const targetRect = target.getBoundingClientRect();
-        
-        if (isOverlapping(touch.clientX, touch.clientY, targetRect)) {
-            checkColorMatch(piece);
-        }
-    }
-    
-    resetColorPiece(piece);
-}
-
-function handleColorMouseDown(e) {
-    const piece = e.target.closest('.color-piece');
-    if (!piece || piece.classList.contains('matched')) return;
-    
-    const rect = piece.getBoundingClientRect();
-    colorsGameState.draggedElement = piece;
-    colorsGameState.originalRect = rect;
-    
-    piece.classList.add('dragging');
-    piece.style.position = 'fixed';
-    piece.style.zIndex = '1000';
-    piece.style.left = (e.clientX - rect.width / 2) + 'px';
-    piece.style.top = (e.clientY - rect.height / 2) + 'px';
-    
-    playSound('pop');
-    
-    const moveHandler = (e) => {
-        piece.style.left = (e.clientX - rect.width / 2) + 'px';
-        piece.style.top = (e.clientY - rect.height / 2) + 'px';
-        
-        const target = document.querySelector('.color-target');
-        if (target) {
-            const targetRect = target.getBoundingClientRect();
-            if (isOverlapping(e.clientX, e.clientY, targetRect)) {
-                target.classList.add('highlight');
-            } else {
-                target.classList.remove('highlight');
-            }
-        }
-    };
-    
-    const upHandler = (e) => {
-        document.removeEventListener('mousemove', moveHandler);
-        document.removeEventListener('mouseup', upHandler);
-        
-        const target = document.querySelector('.color-target');
-        if (target) {
-            target.classList.remove('highlight');
-            const targetRect = target.getBoundingClientRect();
-            
-            if (isOverlapping(e.clientX, e.clientY, targetRect)) {
-                checkColorMatch(piece);
-            }
-        }
-        
-        resetColorPiece(piece);
-    };
-    
-    document.addEventListener('mousemove', moveHandler);
-    document.addEventListener('mouseup', upHandler);
-}
-
-function checkColorMatch(piece) {
-    const targetColor = colorsGameState.currentTarget.color;
-    const pieceColor = piece.dataset.color;
-    
-    if (pieceColor === targetColor) {
-        // ACERTOU!
-        piece.classList.add('matched');
+function checkColorAnswer(selected, btn) {
+    if (selected.color === colorsGameState.currentTarget.color) {
+        btn.classList.add('correct');
         colorsGameState.totalStars += colorsGameState.stars;
         colorsGameState.round++;
-        
         playSound('correct');
         showFeedback(true, colorsGameState.stars);
-        
+        document.querySelectorAll('.color-option-btn').forEach(b => b.disabled = true);
         setTimeout(nextColorRound, 1000);
     } else {
-        // ERROU!
+        btn.classList.add('wrong');
+        btn.disabled = true;
         colorsGameState.errors++;
         colorsGameState.stars = Math.max(1, 3 - colorsGameState.errors);
         updateStarsDisplay('colors', colorsGameState.stars);
-        
         playSound('wrong');
         showFeedback(false);
-        
-        // Desabilitar a peça errada
-        piece.classList.add('wrong-piece');
-        piece.style.opacity = '0.3';
-        piece.style.pointerEvents = 'none';
-    }
-}
-
-function resetColorPiece(piece) {
-    piece.classList.remove('dragging');
-    piece.style.position = '';
-    piece.style.zIndex = '';
-    piece.style.left = '';
-    piece.style.top = '';
-    colorsGameState.draggedElement = null;
-    colorsGameState.originalRect = null;
-}
-
-function updateStarsDisplay(game, count) {
-    const display = document.getElementById(`${game}-stars`);
-    if (display) {
-        display.textContent = '⭐'.repeat(count) + '☆'.repeat(3 - count);
     }
 }
 
@@ -562,41 +330,18 @@ function initMemoryGame() {
     document.getElementById('memory-level').textContent = level;
     document.getElementById('memory-moves').textContent = '0';
     
-    memoryGameState.matchedPairs = 0;
-    memoryGameState.moves = 0;
-    memoryGameState.flippedCards = [];
-    memoryGameState.isLocked = false;
+    memoryGameState = { cards: [], flippedCards: [], matchedPairs: 0, moves: 0, isLocked: false };
     
-    let numPairs;
-    if (state.playerAge <= 3) {
-        numPairs = Math.min(2 + level, 4);
-    } else if (state.playerAge <= 5) {
-        numPairs = Math.min(3 + level, 6);
-    } else {
-        numPairs = Math.min(4 + level, 8);
-    }
+    let numPairs = Math.min(2 + level, 6);
     
     const selectedEmojis = getRandomItems(memoryEmojis, numPairs);
-    const cardPairs = [...selectedEmojis, ...selectedEmojis];
-    memoryGameState.cards = shuffleArray(cardPairs);
+    memoryGameState.cards = shuffleArray([...selectedEmojis, ...selectedEmojis]);
     
     const grid = document.getElementById('memory-grid');
     grid.innerHTML = '';
     
-    // Determinar número de colunas
-    const totalCards = numPairs * 2;
-    let cols;
-    if (totalCards <= 4) {
-        cols = 2;
-    } else if (totalCards <= 9) {
-        cols = 3;
-    } else {
-        cols = 4;
-    }
-    
-    // Remover classes antigas e adicionar nova
-    grid.classList.remove('cols-2', 'cols-3', 'cols-4');
-    grid.classList.add(`cols-${cols}`);
+    const cols = numPairs <= 2 ? 2 : (numPairs <= 4 ? 3 : 4);
+    grid.className = `memory-grid cols-${cols}`;
     
     memoryGameState.cards.forEach((emoji, index) => {
         const card = document.createElement('button');
@@ -605,7 +350,7 @@ function initMemoryGame() {
         card.dataset.emoji = emoji;
         card.innerHTML = `
             <div class="memory-card-inner">
-                <div class="memory-card-front"></div>
+                <div class="memory-card-front">❓</div>
                 <div class="memory-card-back">${emoji}</div>
             </div>
         `;
@@ -616,8 +361,7 @@ function initMemoryGame() {
 
 function flipCard(card) {
     if (memoryGameState.isLocked) return;
-    if (card.classList.contains('flipped')) return;
-    if (card.classList.contains('matched')) return;
+    if (card.classList.contains('flipped') || card.classList.contains('matched')) return;
     if (memoryGameState.flippedCards.length >= 2) return;
     
     card.classList.add('flipped');
@@ -643,7 +387,6 @@ function checkMemoryMatch() {
         card1.classList.add('matched');
         card2.classList.add('matched');
         memoryGameState.matchedPairs++;
-        
         memoryGameState.flippedCards = [];
         memoryGameState.isLocked = false;
         
@@ -657,7 +400,6 @@ function checkMemoryMatch() {
     } else {
         playSound('wrong');
         showFeedback(false);
-        
         setTimeout(() => {
             card1.classList.remove('flipped');
             card2.classList.remove('flipped');
@@ -667,66 +409,11 @@ function checkMemoryMatch() {
     }
 }
 
-// ===== GAME COMPLETE =====
-function showGameComplete() {
-    document.getElementById('victory-stars').textContent = '🏆';
-    document.getElementById('victory-text').textContent = 'Você completou todas as fases! 🎉🎊';
-    document.querySelector('.victory-title').textContent = 'Campeão!';
-    
-    // Esconder botão de próxima fase
-    document.querySelector('.next-btn').style.display = 'none';
-    
-    showScreen('victory-screen');
-    playSound('victory');
-    createConfetti();
-    
-    // Restaurar botão depois (para outros jogos)
-    setTimeout(() => {
-        document.querySelector('.next-btn').style.display = '';
-        document.querySelector('.victory-title').textContent = 'Parabéns!';
-    }, 100);
-}
-
-// ===== FEEDBACK VISUAL =====
-function showFeedback(success, stars = 0) {
-    // Remover feedback anterior
-    const existing = document.querySelector('.feedback-overlay');
-    if (existing) existing.remove();
-    
-    const overlay = document.createElement('div');
-    overlay.className = 'feedback-overlay';
-    
-    if (success) {
-        overlay.innerHTML = `
-            <div class="feedback-icon success">✓</div>
-            ${stars > 0 ? `<div class="feedback-stars">${'⭐'.repeat(stars)}</div>` : ''}
-        `;
-    } else {
-        overlay.innerHTML = `<div class="feedback-icon error">✗</div>`;
-    }
-    
-    document.body.appendChild(overlay);
-    
-    setTimeout(() => {
-        overlay.classList.add('fade-out');
-        setTimeout(() => overlay.remove(), 300);
-    }, 600);
-}
-
-function showVictoryWithStars(stars) {
-    document.getElementById('victory-stars').textContent = '⭐'.repeat(stars) + '☆'.repeat(3 - stars);
-    document.getElementById('victory-text').textContent = stars === 3 ? 'Perfeito! 🎉' : 
-                                                           stars === 2 ? 'Muito bem! 👏' : 'Continue tentando! 💪';
-    showScreen('victory-screen');
-    playSound('victory');
-    createConfetti();
-}
-
 // ===== NUMBERS GAME (Contar e Clicar) =====
 const numbersEmojis = ['🍎', '🍊', '🍋', '🍇', '🍓', '🌟', '🎈', '🐟', '🦋', '🌸'];
 
 let numbersGameState = {
-    currentTarget: null,
+    currentTarget: 0,
     stars: 3,
     errors: 0,
     round: 0,
@@ -738,22 +425,15 @@ function initNumbersGame() {
     const level = state.currentLevel;
     document.getElementById('numbers-level').textContent = level;
     
-    numbersGameState.stars = 3;
-    numbersGameState.errors = 0;
-    numbersGameState.round = 0;
-    numbersGameState.totalRounds = 3 + level;
-    numbersGameState.totalStars = 0;
-    
+    numbersGameState = { currentTarget: 0, stars: 3, errors: 0, round: 0, totalRounds: 3 + level, totalStars: 0 };
     updateStarsDisplay('numbers', 3);
     nextNumberRound();
 }
 
 function nextNumberRound() {
     if (numbersGameState.round >= numbersGameState.totalRounds) {
-        const maxStars = numbersGameState.totalRounds * 3;
-        const percent = (numbersGameState.totalStars / maxStars) * 100;
-        let finalStars = percent >= 80 ? 3 : (percent >= 50 ? 2 : 1);
-        showVictoryWithStars(finalStars);
+        const percent = (numbersGameState.totalStars / (numbersGameState.totalRounds * 3)) * 100;
+        showVictoryWithStars(percent >= 80 ? 3 : (percent >= 50 ? 2 : 1));
         return;
     }
     
@@ -761,43 +441,37 @@ function nextNumberRound() {
     numbersGameState.errors = 0;
     updateStarsDisplay('numbers', 3);
     
-    // Número alvo (1-5 para crianças pequenas, até 7 para maiores)
     const maxNum = state.playerAge <= 4 ? 5 : 7;
     const targetNum = Math.floor(Math.random() * maxNum) + 1;
     const emoji = numbersEmojis[Math.floor(Math.random() * numbersEmojis.length)];
     
     numbersGameState.currentTarget = targetNum;
     
-    // Mostrar objetos para contar em formato de grid
     const questionDiv = document.getElementById('numbers-question');
     let objectsHTML = '';
     for (let i = 0; i < targetNum; i++) {
-        objectsHTML += `<span class="number-object" style="animation-delay: ${i * 0.1}s">${emoji}</span>`;
+        objectsHTML += `<span class="number-object">${emoji}</span>`;
     }
     
     questionDiv.innerHTML = `
         <div class="numbers-display">
             <div class="numbers-objects">${objectsHTML}</div>
-            <div class="numbers-label">Quantos?</div>
+            <div class="numbers-label">Quantos ${emoji} tem?</div>
         </div>
     `;
     
-    // Criar opções de números como botões clicáveis
     const optionsDiv = document.getElementById('numbers-options');
     optionsDiv.innerHTML = '';
     
-    // Gerar 3 opções incluindo a correta
     let options = [targetNum];
     while (options.length < 3) {
         const rand = Math.floor(Math.random() * maxNum) + 1;
         if (!options.includes(rand)) options.push(rand);
     }
-    options = shuffleArray(options);
     
-    options.forEach(num => {
+    shuffleArray(options).forEach(num => {
         const btn = document.createElement('button');
         btn.className = 'number-option';
-        btn.dataset.number = num;
         btn.textContent = num;
         btn.onclick = () => checkNumberAnswer(num, btn);
         optionsDiv.appendChild(btn);
@@ -806,47 +480,35 @@ function nextNumberRound() {
 
 function checkNumberAnswer(selected, btn) {
     if (selected === numbersGameState.currentTarget) {
-        // ACERTOU!
         btn.classList.add('correct');
         numbersGameState.totalStars += numbersGameState.stars;
         numbersGameState.round++;
-        
         playSound('correct');
         showFeedback(true, numbersGameState.stars);
-        
         document.querySelectorAll('.number-option').forEach(b => b.disabled = true);
-        
         setTimeout(nextNumberRound, 1200);
     } else {
-        // ERROU!
         btn.classList.add('wrong');
         btn.disabled = true;
         numbersGameState.errors++;
         numbersGameState.stars = Math.max(1, 3 - numbersGameState.errors);
         updateStarsDisplay('numbers', numbersGameState.stars);
-        
         playSound('wrong');
         showFeedback(false);
         
         if (numbersGameState.errors >= 2) {
             numbersGameState.totalStars += numbersGameState.stars;
             numbersGameState.round++;
-            
             document.querySelectorAll('.number-option').forEach(b => {
-                if (parseInt(b.dataset.number) === numbersGameState.currentTarget) {
-                    b.classList.add('correct');
-                }
+                if (parseInt(b.textContent) === numbersGameState.currentTarget) b.classList.add('correct');
                 b.disabled = true;
             });
-            
             setTimeout(nextNumberRound, 1500);
         }
     }
 }
 
-// Funções antigas de drag removidas - agora usa clique
-
-// ===== ANIMALS GAME (Animal + Habitat - CLIQUE) =====
+// ===== ANIMALS GAME (Animal + Habitat) =====
 const habitatsData = [
     { habitat: '🏠', name: 'Casa', animals: ['🐶', '🐱', '🐹', '🐰'] },
     { habitat: '🌾', name: 'Fazenda', animals: ['🐮', '🐷', '🐔', '🐴'] },
@@ -854,7 +516,7 @@ const habitatsData = [
     { habitat: '💧', name: 'Água', animals: ['🐟', '🐸', '🦆', '🐳'] }
 ];
 
-const allAnimals = ['🐶', '🐱', '🐹', '🐰', '🐮', '🐷', '🐔', '🐴', '🦁', '🐘', '🦒', '🐵', '🐟', '🐸', '🦆', '🐳'];
+const allAnimalsEmojis = ['🐶', '🐱', '🐹', '🐰', '🐮', '🐷', '🐔', '🐴', '🦁', '🐘', '🦒', '🐵', '🐟', '🐸', '🦆', '🐳'];
 
 let animalsGameState = {
     currentHabitat: null,
@@ -870,22 +532,15 @@ function initAnimalsGame() {
     const level = state.currentLevel;
     document.getElementById('animals-level').textContent = level;
     
-    animalsGameState.stars = 3;
-    animalsGameState.errors = 0;
-    animalsGameState.round = 0;
-    animalsGameState.totalRounds = 3 + level;
-    animalsGameState.totalStars = 0;
-    
+    animalsGameState = { currentHabitat: null, correctAnimals: [], stars: 3, errors: 0, round: 0, totalRounds: 3 + level, totalStars: 0 };
     updateStarsDisplay('animals', 3);
     nextAnimalRound();
 }
 
 function nextAnimalRound() {
     if (animalsGameState.round >= animalsGameState.totalRounds) {
-        const maxStars = animalsGameState.totalRounds * 3;
-        const percent = (animalsGameState.totalStars / maxStars) * 100;
-        let finalStars = percent >= 80 ? 3 : (percent >= 50 ? 2 : 1);
-        showVictoryWithStars(finalStars);
+        const percent = (animalsGameState.totalStars / (animalsGameState.totalRounds * 3)) * 100;
+        showVictoryWithStars(percent >= 80 ? 3 : (percent >= 50 ? 2 : 1));
         return;
     }
     
@@ -893,30 +548,25 @@ function nextAnimalRound() {
     animalsGameState.errors = 0;
     updateStarsDisplay('animals', 3);
     
-    // Escolher habitat aleatório
     const habitat = habitatsData[Math.floor(Math.random() * habitatsData.length)];
     animalsGameState.currentHabitat = habitat;
-    
-    // Escolher 1 animal correto desse habitat
-    const correctAnimal = habitat.animals[Math.floor(Math.random() * habitat.animals.length)];
     animalsGameState.correctAnimals = habitat.animals;
     
-    // Mostrar o habitat
+    const correctAnimal = habitat.animals[Math.floor(Math.random() * habitat.animals.length)];
+    
     const questionDiv = document.getElementById('animals-question');
     questionDiv.innerHTML = `
         <div class="habitat-display">
             <span class="habitat-icon">${habitat.habitat}</span>
-            <span class="habitat-label">Quem mora aqui?</span>
+            <span class="habitat-label">${habitat.name}</span>
+            <span class="habitat-question">Quem mora aqui?</span>
         </div>
     `;
     
-    // Criar opções (1 correto + 2 errados)
     let options = [correctAnimal];
-    const wrongAnimals = allAnimals.filter(a => !habitat.animals.includes(a));
-    const randomWrong = shuffleArray(wrongAnimals).slice(0, 2);
-    options = shuffleArray([...options, ...randomWrong]);
+    const wrongAnimals = allAnimalsEmojis.filter(a => !habitat.animals.includes(a));
+    options = shuffleArray([...options, ...shuffleArray(wrongAnimals).slice(0, 2)]);
     
-    // Mostrar opções como botões clicáveis
     const optionsDiv = document.getElementById('animals-options');
     optionsDiv.innerHTML = '';
     
@@ -924,212 +574,231 @@ function nextAnimalRound() {
         const btn = document.createElement('button');
         btn.className = 'animal-option';
         btn.textContent = animal;
-        btn.dataset.animal = animal;
         btn.onclick = () => checkAnimalAnswer(animal, btn);
         optionsDiv.appendChild(btn);
     });
 }
 
 function checkAnimalAnswer(selected, btn) {
-    const correctAnimals = animalsGameState.correctAnimals;
-    
-    if (correctAnimals.includes(selected)) {
-        // ACERTOU!
+    if (animalsGameState.correctAnimals.includes(selected)) {
         btn.classList.add('correct');
         animalsGameState.totalStars += animalsGameState.stars;
         animalsGameState.round++;
-        
         playSound('correct');
         showFeedback(true, animalsGameState.stars);
-        
         document.querySelectorAll('.animal-option').forEach(b => b.disabled = true);
-        
         setTimeout(nextAnimalRound, 1200);
     } else {
-        // ERROU!
         btn.classList.add('wrong');
         btn.disabled = true;
         animalsGameState.errors++;
         animalsGameState.stars = Math.max(1, 3 - animalsGameState.errors);
         updateStarsDisplay('animals', animalsGameState.stars);
-        
         playSound('wrong');
         showFeedback(false);
         
         if (animalsGameState.errors >= 2) {
             animalsGameState.totalStars += animalsGameState.stars;
             animalsGameState.round++;
-            
             document.querySelectorAll('.animal-option').forEach(b => {
-                if (correctAnimals.includes(b.dataset.animal)) {
-                    b.classList.add('correct');
-                }
+                if (animalsGameState.correctAnimals.includes(b.textContent)) b.classList.add('correct');
                 b.disabled = true;
             });
-            
             setTimeout(nextAnimalRound, 1500);
         }
     }
 }
 
-// Funções antigas de drag removidas - agora usa clique
-
-// ===== PUZZLE GAME (Completar Padrões/Sequências) =====
-const patternSets = [
-    ['🍎', '🍊', '🍎', '🍊'],
-    ['🔵', '🔴', '🔵', '🔴'],
-    ['⭐', '🌙', '⭐', '🌙'],
-    ['🐶', '🐱', '🐶', '🐱'],
-    ['🌸', '🌺', '🌸', '🌺'],
-    ['🚗', '🚌', '🚗', '🚌'],
-    ['🍎', '🍎', '🍊', '🍊'],
-    ['🔵', '🔵', '🔴', '🔵'],
-    ['⭐', '⭐', '🌙', '⭐'],
-    ['🍎', '🍊', '🍋', '🍎'],
-    ['🔴', '🟡', '🔵', '🔴'],
-    ['🐶', '🐱', '🐰', '🐶']
+// ===== PUZZLE GAME (Quebra-cabeça REAL) =====
+const puzzleImages = [
+    { emoji: '🌈', name: 'Arco-íris' },
+    { emoji: '🏠', name: 'Casa' },
+    { emoji: '🌸', name: 'Flor' },
+    { emoji: '🚗', name: 'Carro' },
+    { emoji: '⭐', name: 'Estrela' },
+    { emoji: '🐱', name: 'Gato' }
 ];
 
 let puzzleGameState = {
-    currentPattern: [],
-    correctAnswer: null,
+    pieces: [],
+    placed: 0,
+    total: 0,
     stars: 3,
     errors: 0,
-    round: 0,
-    totalRounds: 5,
-    totalStars: 0
+    draggedPiece: null
 };
 
 function initPuzzleGame() {
     const level = state.currentLevel;
     document.getElementById('puzzle-level').textContent = level;
     
-    puzzleGameState.stars = 3;
-    puzzleGameState.errors = 0;
-    puzzleGameState.round = 0;
-    puzzleGameState.totalRounds = 4 + level;
-    puzzleGameState.totalStars = 0;
+    // Número de peças baseado no nível (2x2, 2x3, 3x3)
+    let rows, cols;
+    if (level <= 2) { rows = 2; cols = 2; }
+    else if (level <= 4) { rows = 2; cols = 3; }
+    else { rows = 3; cols = 3; }
     
-    updateStarsDisplay('puzzle', 3);
-    nextPatternRound();
-}
-
-function nextPatternRound() {
-    if (puzzleGameState.round >= puzzleGameState.totalRounds) {
-        const maxStars = puzzleGameState.totalRounds * 3;
-        const percent = (puzzleGameState.totalStars / maxStars) * 100;
-        let finalStars = percent >= 80 ? 3 : (percent >= 50 ? 2 : 1);
-        showVictoryWithStars(finalStars);
-        return;
-    }
-    
-    puzzleGameState.stars = 3;
-    puzzleGameState.errors = 0;
+    const total = rows * cols;
+    puzzleGameState = { pieces: [], placed: 0, total: total, stars: 3, errors: 0, draggedPiece: null };
     updateStarsDisplay('puzzle', 3);
     
-    // Escolher padrão aleatório
-    const pattern = patternSets[Math.floor(Math.random() * patternSets.length)];
-    const patternLength = Math.min(3 + Math.floor(state.currentLevel / 2), 5);
+    const imageData = puzzleImages[(level - 1) % puzzleImages.length];
     
-    // Criar sequência e determinar resposta correta
-    const sequence = [];
-    for (let i = 0; i < patternLength; i++) {
-        sequence.push(pattern[i % pattern.length]);
-    }
-    
-    // A resposta correta é o próximo item do padrão
-    const correctAnswer = pattern[patternLength % pattern.length];
-    puzzleGameState.correctAnswer = correctAnswer;
-    puzzleGameState.currentPattern = pattern;
-    
-    // Mostrar sequência com último item como "?"
+    // Criar área do puzzle
     const targetArea = document.getElementById('puzzle-target');
     targetArea.innerHTML = `
-        <div class="pattern-sequence">
-            ${sequence.map(item => `<span class="pattern-item">${item}</span>`).join('')}
-            <span class="pattern-item pattern-question">?</span>
+        <div class="puzzle-title">${imageData.name} ${imageData.emoji}</div>
+        <div class="puzzle-grid" style="grid-template-columns: repeat(${cols}, 1fr);">
+            ${Array(total).fill().map((_, i) => `
+                <div class="puzzle-slot" data-index="${i}">
+                    <span class="slot-number">${i + 1}</span>
+                </div>
+            `).join('')}
         </div>
     `;
     
-    // Criar opções (3 opções, incluindo a correta)
-    const uniqueItems = [...new Set(pattern)];
-    let options = [correctAnswer];
-    
-    // Adicionar outras opções
-    const otherEmojis = ['🍎', '🍊', '🍋', '🔵', '🔴', '🟡', '⭐', '🌙', '🐶', '🐱', '🐰', '🌸', '🌺', '🚗', '🚌'];
-    const availableOptions = otherEmojis.filter(e => e !== correctAnswer);
-    
-    while (options.length < 3) {
-        const rand = availableOptions[Math.floor(Math.random() * availableOptions.length)];
-        if (!options.includes(rand)) options.push(rand);
-    }
-    
-    options = shuffleArray(options);
-    
-    // Mostrar opções como botões clicáveis
+    // Criar peças embaralhadas
     const piecesArea = document.getElementById('puzzle-pieces');
-    piecesArea.innerHTML = '';
+    piecesArea.innerHTML = '<div class="puzzle-pieces-label">Arraste as peças:</div><div class="puzzle-pieces-grid"></div>';
     
-    options.forEach(option => {
-        const btn = document.createElement('button');
-        btn.className = 'pattern-option';
-        btn.textContent = option;
-        btn.dataset.value = option;
-        btn.onclick = () => checkPatternAnswer(option, btn);
-        piecesArea.appendChild(btn);
+    const piecesGrid = piecesArea.querySelector('.puzzle-pieces-grid');
+    const indices = shuffleArray(Array(total).fill().map((_, i) => i));
+    
+    indices.forEach(i => {
+        const piece = document.createElement('div');
+        piece.className = 'puzzle-piece';
+        piece.dataset.index = i;
+        piece.innerHTML = `<span class="piece-emoji">${imageData.emoji}</span><span class="piece-number">${i + 1}</span>`;
+        
+        piece.addEventListener('touchstart', handlePuzzleTouchStart, { passive: false });
+        piece.addEventListener('touchmove', handlePuzzleTouchMove, { passive: false });
+        piece.addEventListener('touchend', handlePuzzleTouchEnd);
+        piece.addEventListener('mousedown', handlePuzzleMouseDown);
+        
+        piecesGrid.appendChild(piece);
     });
 }
 
-function checkPatternAnswer(selected, btn) {
-    if (selected === puzzleGameState.correctAnswer) {
-        // ACERTOU!
-        btn.classList.add('correct');
-        puzzleGameState.totalStars += puzzleGameState.stars;
-        puzzleGameState.round++;
-        
-        // Mostrar resposta correta no padrão
-        document.querySelector('.pattern-question').textContent = selected;
-        document.querySelector('.pattern-question').classList.remove('pattern-question');
-        
-        playSound('correct');
-        showFeedback(true, puzzleGameState.stars);
-        
-        // Desabilitar outros botões
-        document.querySelectorAll('.pattern-option').forEach(b => b.disabled = true);
-        
-        setTimeout(nextPatternRound, 1200);
-    } else {
-        // ERROU!
-        btn.classList.add('wrong');
-        btn.disabled = true;
-        puzzleGameState.errors++;
-        puzzleGameState.stars = Math.max(1, 3 - puzzleGameState.errors);
-        updateStarsDisplay('puzzle', puzzleGameState.stars);
-        
-        playSound('wrong');
-        showFeedback(false);
-        
-        // Se errou 2 vezes, mostra a resposta e avança
-        if (puzzleGameState.errors >= 2) {
-            puzzleGameState.totalStars += puzzleGameState.stars;
-            puzzleGameState.round++;
-            
-            document.querySelector('.pattern-question').textContent = puzzleGameState.correctAnswer;
-            document.querySelector('.pattern-question').classList.remove('pattern-question');
-            
-            document.querySelectorAll('.pattern-option').forEach(b => {
-                if (b.dataset.value === puzzleGameState.correctAnswer) {
-                    b.classList.add('correct');
-                }
-                b.disabled = true;
-            });
-            
-            setTimeout(nextPatternRound, 1500);
-        }
-    }
+function handlePuzzleTouchStart(e) {
+    if (e.cancelable) e.preventDefault();
+    const piece = e.target.closest('.puzzle-piece');
+    if (!piece || piece.classList.contains('placed')) return;
+    
+    const touch = e.touches[0];
+    const rect = piece.getBoundingClientRect();
+    
+    puzzleGameState.draggedPiece = piece;
+    piece.style.position = 'fixed';
+    piece.style.zIndex = '1000';
+    piece.style.left = (touch.clientX - rect.width / 2) + 'px';
+    piece.style.top = (touch.clientY - rect.height / 2) + 'px';
+    piece.classList.add('dragging');
+    playSound('pop');
 }
 
-// Funções antigas do puzzle removidas - agora usa clique simples
+function handlePuzzleTouchMove(e) {
+    if (e.cancelable) e.preventDefault();
+    if (!puzzleGameState.draggedPiece) return;
+    
+    const touch = e.touches[0];
+    const piece = puzzleGameState.draggedPiece;
+    const rect = piece.getBoundingClientRect();
+    
+    piece.style.left = (touch.clientX - rect.width / 2) + 'px';
+    piece.style.top = (touch.clientY - rect.height / 2) + 'px';
+    
+    document.querySelectorAll('.puzzle-slot:not(.filled)').forEach(slot => {
+        const slotRect = slot.getBoundingClientRect();
+        slot.classList.toggle('highlight', isOverlapping(touch.clientX, touch.clientY, slotRect));
+    });
+}
+
+function handlePuzzleTouchEnd(e) {
+    if (!puzzleGameState.draggedPiece) return;
+    
+    const piece = puzzleGameState.draggedPiece;
+    const touch = e.changedTouches[0];
+    
+    checkPuzzleDrop(piece, touch.clientX, touch.clientY);
+    resetPuzzlePiece(piece);
+}
+
+function handlePuzzleMouseDown(e) {
+    const piece = e.target.closest('.puzzle-piece');
+    if (!piece || piece.classList.contains('placed')) return;
+    
+    const rect = piece.getBoundingClientRect();
+    puzzleGameState.draggedPiece = piece;
+    
+    piece.classList.add('dragging');
+    piece.style.position = 'fixed';
+    piece.style.zIndex = '1000';
+    piece.style.left = (e.clientX - rect.width / 2) + 'px';
+    piece.style.top = (e.clientY - rect.height / 2) + 'px';
+    playSound('pop');
+    
+    const moveHandler = (e) => {
+        piece.style.left = (e.clientX - rect.width / 2) + 'px';
+        piece.style.top = (e.clientY - rect.height / 2) + 'px';
+        
+        document.querySelectorAll('.puzzle-slot:not(.filled)').forEach(slot => {
+            const slotRect = slot.getBoundingClientRect();
+            slot.classList.toggle('highlight', isOverlapping(e.clientX, e.clientY, slotRect));
+        });
+    };
+    
+    const upHandler = (e) => {
+        document.removeEventListener('mousemove', moveHandler);
+        document.removeEventListener('mouseup', upHandler);
+        checkPuzzleDrop(piece, e.clientX, e.clientY);
+        resetPuzzlePiece(piece);
+    };
+    
+    document.addEventListener('mousemove', moveHandler);
+    document.addEventListener('mouseup', upHandler);
+}
+
+function checkPuzzleDrop(piece, x, y) {
+    const pieceIndex = parseInt(piece.dataset.index);
+    
+    document.querySelectorAll('.puzzle-slot:not(.filled)').forEach(slot => {
+        slot.classList.remove('highlight');
+        const slotRect = slot.getBoundingClientRect();
+        
+        if (isOverlapping(x, y, slotRect)) {
+            const slotIndex = parseInt(slot.dataset.index);
+            
+            if (pieceIndex === slotIndex) {
+                slot.classList.add('filled');
+                slot.innerHTML = piece.innerHTML;
+                piece.classList.add('placed');
+                piece.style.visibility = 'hidden';
+                puzzleGameState.placed++;
+                playSound('correct');
+                showFeedback(true);
+                
+                if (puzzleGameState.placed === puzzleGameState.total) {
+                    setTimeout(() => showVictoryWithStars(puzzleGameState.stars), 500);
+                }
+            } else {
+                puzzleGameState.errors++;
+                puzzleGameState.stars = Math.max(1, 3 - puzzleGameState.errors);
+                updateStarsDisplay('puzzle', puzzleGameState.stars);
+                playSound('wrong');
+                showFeedback(false);
+            }
+        }
+    });
+}
+
+function resetPuzzlePiece(piece) {
+    piece.classList.remove('dragging');
+    piece.style.position = '';
+    piece.style.zIndex = '';
+    piece.style.left = '';
+    piece.style.top = '';
+    puzzleGameState.draggedPiece = null;
+}
 
 // ===== DESENHO LIVRE =====
 let drawState = {
@@ -1147,7 +816,6 @@ function initDrawGame() {
     const canvas = document.getElementById('draw-canvas');
     const container = canvas.parentElement;
     
-    // Ajustar tamanho do canvas
     canvas.width = container.clientWidth;
     canvas.height = container.clientHeight;
     
@@ -1156,11 +824,9 @@ function initDrawGame() {
     drawState.ctx.lineCap = 'round';
     drawState.ctx.lineJoin = 'round';
     
-    // Fundo branco
     drawState.ctx.fillStyle = '#FFFFFF';
     drawState.ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // Eventos de desenho
     canvas.addEventListener('touchstart', handleDrawStart, { passive: false });
     canvas.addEventListener('touchmove', handleDrawMove, { passive: false });
     canvas.addEventListener('touchend', handleDrawEnd);
@@ -1170,7 +836,6 @@ function initDrawGame() {
     canvas.addEventListener('mouseup', handleDrawEnd);
     canvas.addEventListener('mouseout', handleDrawEnd);
     
-    // Reset ferramentas
     setDrawColor('#000000');
     setDrawSize(10);
     setDrawTool('brush');
@@ -1184,7 +849,6 @@ function handleDrawStart(e) {
     drawState.lastX = pos.x;
     drawState.lastY = pos.y;
     
-    // Desenhar ponto inicial
     drawState.ctx.beginPath();
     drawState.ctx.arc(pos.x, pos.y, drawState.currentSize / 2, 0, Math.PI * 2);
     drawState.ctx.fillStyle = drawState.currentTool === 'eraser' ? '#FFFFFF' : drawState.currentColor;
@@ -1267,34 +931,13 @@ function saveDrawing() {
 }
 
 // ===== PINTAR (Colorir) =====
-const paintImages = [
-    { name: 'Estrela', paths: [{ d: 'M150,20 L180,90 L260,90 L195,140 L220,210 L150,170 L80,210 L105,140 L40,90 L120,90 Z', fill: '#FFD700' }] },
-    { name: 'Coração', paths: [{ d: 'M150,50 C100,0 0,50 150,200 C300,50 200,0 150,50', fill: '#FF69B4' }] },
-    { name: 'Casa', paths: [
-        { d: 'M50,120 L150,40 L250,120 L250,220 L50,220 Z', fill: '#8B4513' },
-        { d: 'M100,220 L100,160 L140,160 L140,220', fill: '#FFD700' },
-        { d: 'M170,130 L210,130 L210,170 L170,170 Z', fill: '#87CEEB' }
-    ]},
-    { name: 'Flor', paths: [
-        { d: 'M150,100 A30,30 0 1,1 150,99.9', fill: '#FFD700' },
-        { d: 'M150,60 A25,25 0 1,1 150,59.9', fill: '#FF69B4' },
-        { d: 'M190,100 A25,25 0 1,1 190,99.9', fill: '#FF69B4' },
-        { d: 'M150,140 A25,25 0 1,1 150,139.9', fill: '#FF69B4' },
-        { d: 'M110,100 A25,25 0 1,1 110,99.9', fill: '#FF69B4' },
-        { d: 'M140,100 L160,100 L150,220', fill: '#228B22' }
-    ]},
-    { name: 'Sol', paths: [
-        { d: 'M150,100 A50,50 0 1,1 150,99.9', fill: '#FFD700' },
-        { d: 'M150,20 L155,40 L145,40 Z', fill: '#FFA500' },
-        { d: 'M150,160 L155,180 L145,180 Z', fill: '#FFA500' },
-        { d: 'M90,100 L70,105 L70,95 Z', fill: '#FFA500' },
-        { d: 'M210,100 L230,105 L230,95 Z', fill: '#FFA500' }
-    ]},
-    { name: 'Peixe', paths: [
-        { d: 'M50,100 Q150,50 250,100 Q150,150 50,100', fill: '#1E90FF' },
-        { d: 'M230,100 L270,70 L270,130 Z', fill: '#FF6347' },
-        { d: 'M100,90 A8,8 0 1,1 100,89.9', fill: '#000000' }
-    ]}
+const paintShapes = [
+    { name: 'Estrela', draw: (ctx, w, h) => { drawStar(ctx, w/2, h/2, 5, w*0.35, w*0.15); } },
+    { name: 'Coração', draw: (ctx, w, h) => { drawHeart(ctx, w/2, h/2, w*0.3); } },
+    { name: 'Flor', draw: (ctx, w, h) => { drawFlower(ctx, w/2, h/2, w*0.15); } },
+    { name: 'Casa', draw: (ctx, w, h) => { drawHouse(ctx, w/2, h/2, w*0.35); } },
+    { name: 'Sol', draw: (ctx, w, h) => { drawSun(ctx, w/2, h/2, w*0.25); } },
+    { name: 'Borboleta', draw: (ctx, w, h) => { drawButterfly(ctx, w/2, h/2, w*0.3); } }
 ];
 
 let paintState = {
@@ -1302,7 +945,7 @@ let paintState = {
     ctx: null,
     currentImage: 0,
     currentColor: '#FF0000',
-    regions: []
+    colorMap: null
 };
 
 function initPaintGame() {
@@ -1324,59 +967,28 @@ function initPaintGame() {
 }
 
 function loadPaintImage() {
-    const img = paintImages[paintState.currentImage];
-    document.getElementById('paint-title').textContent = img.name;
+    const shape = paintShapes[paintState.currentImage];
+    document.getElementById('paint-title').textContent = shape.name;
     
     const ctx = paintState.ctx;
-    const canvas = paintState.canvas;
+    const w = paintState.canvas.width;
+    const h = paintState.canvas.height;
     
-    // Limpar e fundo branco
     ctx.fillStyle = '#FFFFFF';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, w, h);
     
-    // Calcular escala e offset para centralizar
-    const scale = Math.min(canvas.width / 300, canvas.height / 250) * 0.8;
-    const offsetX = (canvas.width - 300 * scale) / 2;
-    const offsetY = (canvas.height - 250 * scale) / 2;
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 3;
+    ctx.fillStyle = '#FFFFFF';
     
-    paintState.regions = [];
-    
-    // Desenhar paths como contornos
-    img.paths.forEach((pathData, index) => {
-        const path = new Path2D(pathData.d);
-        
-        ctx.save();
-        ctx.translate(offsetX, offsetY);
-        ctx.scale(scale, scale);
-        
-        // Preencher com branco (não pintado ainda)
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fill(path);
-        
-        // Contorno preto
-        ctx.strokeStyle = '#000000';
-        ctx.lineWidth = 2 / scale;
-        ctx.stroke(path);
-        
-        ctx.restore();
-        
-        // Salvar região para detecção de clique
-        paintState.regions.push({
-            path: path,
-            originalFill: pathData.fill,
-            currentFill: '#FFFFFF',
-            scale: scale,
-            offsetX: offsetX,
-            offsetY: offsetY
-        });
-    });
+    shape.draw(ctx, w, h);
 }
 
 function handlePaintClick(e) {
     const rect = paintState.canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    paintAtPoint(x, y);
+    floodFill(Math.floor(x), Math.floor(y), paintState.currentColor);
 }
 
 function handlePaintTouch(e) {
@@ -1384,36 +996,63 @@ function handlePaintTouch(e) {
     const rect = paintState.canvas.getBoundingClientRect();
     const x = e.touches[0].clientX - rect.left;
     const y = e.touches[0].clientY - rect.top;
-    paintAtPoint(x, y);
+    floodFill(Math.floor(x), Math.floor(y), paintState.currentColor);
 }
 
-function paintAtPoint(x, y) {
+function floodFill(startX, startY, fillColor) {
+    const canvas = paintState.canvas;
     const ctx = paintState.ctx;
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
     
-    // Verificar qual região foi clicada
-    for (let i = paintState.regions.length - 1; i >= 0; i--) {
-        const region = paintState.regions[i];
+    const startPos = (startY * canvas.width + startX) * 4;
+    const startR = data[startPos];
+    const startG = data[startPos + 1];
+    const startB = data[startPos + 2];
+    
+    // Não preencher linhas pretas
+    if (startR < 30 && startG < 30 && startB < 30) return;
+    
+    const fillR = parseInt(fillColor.slice(1, 3), 16);
+    const fillG = parseInt(fillColor.slice(3, 5), 16);
+    const fillB = parseInt(fillColor.slice(5, 7), 16);
+    
+    // Já é a mesma cor
+    if (startR === fillR && startG === fillG && startB === fillB) return;
+    
+    const stack = [[startX, startY]];
+    const visited = new Set();
+    
+    while (stack.length > 0) {
+        const [x, y] = stack.pop();
+        const key = `${x},${y}`;
         
-        ctx.save();
-        ctx.translate(region.offsetX, region.offsetY);
-        ctx.scale(region.scale, region.scale);
+        if (visited.has(key)) continue;
+        if (x < 0 || x >= canvas.width || y < 0 || y >= canvas.height) continue;
         
-        if (ctx.isPointInPath(region.path, (x - region.offsetX) / region.scale, (y - region.offsetY) / region.scale)) {
-            // Pintar esta região
-            region.currentFill = paintState.currentColor;
-            
-            ctx.fillStyle = region.currentFill;
-            ctx.fill(region.path);
-            ctx.strokeStyle = '#000000';
-            ctx.lineWidth = 2 / region.scale;
-            ctx.stroke(region.path);
-            
-            ctx.restore();
-            playSound('pop');
-            return;
-        }
-        ctx.restore();
+        const pos = (y * canvas.width + x) * 4;
+        const r = data[pos];
+        const g = data[pos + 1];
+        const b = data[pos + 2];
+        
+        // Parar em linhas pretas
+        if (r < 30 && g < 30 && b < 30) continue;
+        
+        // Verificar se é cor similar à inicial
+        if (Math.abs(r - startR) > 30 || Math.abs(g - startG) > 30 || Math.abs(b - startB) > 30) continue;
+        
+        visited.add(key);
+        
+        data[pos] = fillR;
+        data[pos + 1] = fillG;
+        data[pos + 2] = fillB;
+        data[pos + 3] = 255;
+        
+        stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
     }
+    
+    ctx.putImageData(imageData, 0, 0);
+    playSound('pop');
 }
 
 function setPaintColor(color) {
@@ -1424,12 +1063,12 @@ function setPaintColor(color) {
 }
 
 function prevPaintImage() {
-    paintState.currentImage = (paintState.currentImage - 1 + paintImages.length) % paintImages.length;
+    paintState.currentImage = (paintState.currentImage - 1 + paintShapes.length) % paintShapes.length;
     loadPaintImage();
 }
 
 function nextPaintImage() {
-    paintState.currentImage = (paintState.currentImage + 1) % paintImages.length;
+    paintState.currentImage = (paintState.currentImage + 1) % paintShapes.length;
     loadPaintImage();
 }
 
@@ -1438,13 +1077,122 @@ function clearPaint() {
     playSound('pop');
 }
 
+// Funções de desenho para pintar
+function drawStar(ctx, cx, cy, spikes, outerR, innerR) {
+    ctx.beginPath();
+    for (let i = 0; i < spikes * 2; i++) {
+        const r = i % 2 === 0 ? outerR : innerR;
+        const angle = (i * Math.PI / spikes) - Math.PI / 2;
+        const x = cx + Math.cos(angle) * r;
+        const y = cy + Math.sin(angle) * r;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+}
+
+function drawHeart(ctx, cx, cy, size) {
+    ctx.beginPath();
+    ctx.moveTo(cx, cy + size * 0.3);
+    ctx.bezierCurveTo(cx, cy - size * 0.3, cx - size, cy - size * 0.3, cx - size, cy + size * 0.3);
+    ctx.bezierCurveTo(cx - size, cy + size, cx, cy + size * 1.2, cx, cy + size * 1.2);
+    ctx.bezierCurveTo(cx, cy + size * 1.2, cx + size, cy + size, cx + size, cy + size * 0.3);
+    ctx.bezierCurveTo(cx + size, cy - size * 0.3, cx, cy - size * 0.3, cx, cy + size * 0.3);
+    ctx.fill();
+    ctx.stroke();
+}
+
+function drawFlower(ctx, cx, cy, petalR) {
+    for (let i = 0; i < 6; i++) {
+        const angle = (i * Math.PI / 3);
+        const px = cx + Math.cos(angle) * petalR;
+        const py = cy + Math.sin(angle) * petalR;
+        ctx.beginPath();
+        ctx.arc(px, py, petalR * 0.8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+    }
+    ctx.beginPath();
+    ctx.arc(cx, cy, petalR * 0.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+}
+
+function drawHouse(ctx, cx, cy, size) {
+    // Base
+    ctx.beginPath();
+    ctx.rect(cx - size * 0.8, cy - size * 0.3, size * 1.6, size * 1.2);
+    ctx.fill();
+    ctx.stroke();
+    // Telhado
+    ctx.beginPath();
+    ctx.moveTo(cx - size, cy - size * 0.3);
+    ctx.lineTo(cx, cy - size);
+    ctx.lineTo(cx + size, cy - size * 0.3);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    // Porta
+    ctx.beginPath();
+    ctx.rect(cx - size * 0.2, cy + size * 0.2, size * 0.4, size * 0.7);
+    ctx.fill();
+    ctx.stroke();
+    // Janela
+    ctx.beginPath();
+    ctx.rect(cx + size * 0.3, cy - size * 0.1, size * 0.35, size * 0.35);
+    ctx.fill();
+    ctx.stroke();
+}
+
+function drawSun(ctx, cx, cy, r) {
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    for (let i = 0; i < 8; i++) {
+        const angle = (i * Math.PI / 4);
+        ctx.beginPath();
+        ctx.moveTo(cx + Math.cos(angle) * r * 1.2, cy + Math.sin(angle) * r * 1.2);
+        ctx.lineTo(cx + Math.cos(angle) * r * 1.6, cy + Math.sin(angle) * r * 1.6);
+        ctx.stroke();
+    }
+}
+
+function drawButterfly(ctx, cx, cy, size) {
+    // Asas
+    ctx.beginPath();
+    ctx.ellipse(cx - size * 0.6, cy - size * 0.3, size * 0.5, size * 0.7, -0.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.ellipse(cx + size * 0.6, cy - size * 0.3, size * 0.5, size * 0.7, 0.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.ellipse(cx - size * 0.5, cy + size * 0.4, size * 0.4, size * 0.5, -0.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.ellipse(cx + size * 0.5, cy + size * 0.4, size * 0.4, size * 0.5, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    // Corpo
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, size * 0.1, size * 0.6, 0, 0, Math.PI * 2);
+    ctx.fillStyle = '#000';
+    ctx.fill();
+    ctx.fillStyle = '#FFF';
+}
+
 // ===== TRACEJAR =====
 const traceShapes = [
-    { name: 'Círculo', points: generateCirclePoints(150, 150, 80, 36) },
-    { name: 'Quadrado', points: generateSquarePoints(70, 70, 160) },
-    { name: 'Triângulo', points: generateTrianglePoints(150, 60, 140) },
-    { name: 'Estrela', points: generateStarPoints(150, 150, 80, 40, 5) },
-    { name: 'Coração', points: generateHeartPoints(150, 160, 70) }
+    { name: 'Círculo', getPoints: (w, h) => generateCirclePoints(w/2, h/2, Math.min(w, h) * 0.35, 30) },
+    { name: 'Quadrado', getPoints: (w, h) => generateSquarePoints(w * 0.2, h * 0.2, Math.min(w, h) * 0.6) },
+    { name: 'Triângulo', getPoints: (w, h) => generateTrianglePoints(w/2, h * 0.15, Math.min(w, h) * 0.6) },
+    { name: 'Estrela', getPoints: (w, h) => generateStarPoints(w/2, h/2, Math.min(w, h) * 0.35, Math.min(w, h) * 0.15, 5) },
+    { name: 'Coração', getPoints: (w, h) => generateHeartPoints(w/2, h * 0.7, Math.min(w, h) * 0.25) }
 ];
 
 function generateCirclePoints(cx, cy, r, n) {
@@ -1457,39 +1205,48 @@ function generateCirclePoints(cx, cy, r, n) {
 }
 
 function generateSquarePoints(x, y, size) {
-    return [
-        { x: x, y: y },
-        { x: x + size, y: y },
-        { x: x + size, y: y + size },
-        { x: x, y: y + size },
-        { x: x, y: y }
-    ];
+    const points = [];
+    const steps = 10;
+    for (let i = 0; i <= steps; i++) points.push({ x: x + (size * i / steps), y: y });
+    for (let i = 1; i <= steps; i++) points.push({ x: x + size, y: y + (size * i / steps) });
+    for (let i = 1; i <= steps; i++) points.push({ x: x + size - (size * i / steps), y: y + size });
+    for (let i = 1; i <= steps; i++) points.push({ x: x, y: y + size - (size * i / steps) });
+    return points;
 }
 
 function generateTrianglePoints(cx, top, size) {
+    const points = [];
     const h = size * Math.sqrt(3) / 2;
-    return [
-        { x: cx, y: top },
-        { x: cx + size / 2, y: top + h },
-        { x: cx - size / 2, y: top + h },
-        { x: cx, y: top }
-    ];
+    const steps = 10;
+    // Lado esquerdo
+    for (let i = 0; i <= steps; i++) {
+        points.push({ x: cx - (size/2 * i / steps), y: top + (h * i / steps) });
+    }
+    // Base
+    for (let i = 1; i <= steps; i++) {
+        points.push({ x: cx - size/2 + (size * i / steps), y: top + h });
+    }
+    // Lado direito
+    for (let i = 1; i <= steps; i++) {
+        points.push({ x: cx + size/2 - (size/2 * i / steps), y: top + h - (h * i / steps) });
+    }
+    return points;
 }
 
-function generateStarPoints(cx, cy, outerR, innerR, points) {
-    const result = [];
-    for (let i = 0; i <= points * 2; i++) {
-        const angle = (i * Math.PI / points) - Math.PI / 2;
+function generateStarPoints(cx, cy, outerR, innerR, n) {
+    const points = [];
+    for (let i = 0; i <= n * 2; i++) {
+        const angle = (i * Math.PI / n) - Math.PI / 2;
         const r = i % 2 === 0 ? outerR : innerR;
-        result.push({ x: cx + Math.cos(angle) * r, y: cy + Math.sin(angle) * r });
+        points.push({ x: cx + Math.cos(angle) * r, y: cy + Math.sin(angle) * r });
     }
-    result.push(result[0]);
-    return result;
+    points.push(points[0]);
+    return points;
 }
 
 function generateHeartPoints(cx, bottom, size) {
     const points = [];
-    for (let t = 0; t <= Math.PI * 2; t += 0.1) {
+    for (let t = 0; t <= Math.PI * 2; t += 0.15) {
         const x = 16 * Math.pow(Math.sin(t), 3);
         const y = -(13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t));
         points.push({ x: cx + x * size / 16, y: bottom - size + y * size / 16 });
@@ -1500,11 +1257,9 @@ function generateHeartPoints(cx, bottom, size) {
 let traceState = {
     canvas: null,
     ctx: null,
-    currentShape: 0,
-    tracedPoints: 0,
-    totalPoints: 0,
+    points: [],
+    currentPoint: 0,
     isTracing: false,
-    lastPoint: null,
     stars: 3
 };
 
@@ -1517,8 +1272,11 @@ function initTraceGame() {
     
     traceState.canvas = canvas;
     traceState.ctx = canvas.getContext('2d');
-    traceState.currentShape = (state.currentLevel - 1) % traceShapes.length;
+    traceState.currentPoint = 0;
     traceState.stars = 3;
+    
+    const shapeIndex = (state.currentLevel - 1) % traceShapes.length;
+    traceState.points = traceShapes[shapeIndex].getPoints(canvas.width, canvas.height);
     
     updateStarsDisplay('trace', 3);
     document.getElementById('trace-level').textContent = state.currentLevel;
@@ -1531,75 +1289,54 @@ function initTraceGame() {
     canvas.addEventListener('mousemove', handleTraceMove);
     canvas.addEventListener('mouseup', handleTraceEnd);
     
-    loadTraceShape();
+    drawTraceGuide();
 }
 
-function loadTraceShape() {
-    const shape = traceShapes[traceState.currentShape];
+function drawTraceGuide() {
     const ctx = traceState.ctx;
     const canvas = traceState.canvas;
+    const points = traceState.points;
     
-    // Limpar canvas
     ctx.fillStyle = '#F0F8FF';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // Escalar e centralizar
-    const scale = Math.min(canvas.width / 300, canvas.height / 300) * 0.9;
-    const offsetX = (canvas.width - 300 * scale) / 2;
-    const offsetY = (canvas.height - 300 * scale) / 2;
-    
-    // Desenhar linha tracejada (guia)
-    ctx.setLineDash([10, 10]);
-    ctx.strokeStyle = '#CCCCCC';
-    ctx.lineWidth = 30 * scale;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    
+    // Desenhar tracejado guia
     ctx.beginPath();
-    shape.points.forEach((p, i) => {
-        const x = offsetX + p.x * scale;
-        const y = offsetY + p.y * scale;
-        if (i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
+    ctx.setLineDash([10, 10]);
+    ctx.strokeStyle = '#CCC';
+    ctx.lineWidth = 4;
+    
+    points.forEach((p, i) => {
+        if (i === 0) ctx.moveTo(p.x, p.y);
+        else ctx.lineTo(p.x, p.y);
     });
     ctx.stroke();
     ctx.setLineDash([]);
     
-    // Ponto inicial
-    const start = shape.points[0];
-    ctx.fillStyle = '#4CAF50';
+    // Desenhar ponto inicial
     ctx.beginPath();
-    ctx.arc(offsetX + start.x * scale, offsetY + start.y * scale, 20 * scale, 0, Math.PI * 2);
+    ctx.arc(points[0].x, points[0].y, 15, 0, Math.PI * 2);
+    ctx.fillStyle = '#4CAF50';
     ctx.fill();
     ctx.fillStyle = '#FFF';
-    ctx.font = `${16 * scale}px Arial`;
+    ctx.font = 'bold 12px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('▶', offsetX + start.x * scale, offsetY + start.y * scale);
-    
-    // Salvar estado
-    traceState.points = shape.points.map(p => ({
-        x: offsetX + p.x * scale,
-        y: offsetY + p.y * scale,
-        traced: false
-    }));
-    traceState.tracedPoints = 0;
-    traceState.totalPoints = shape.points.length;
-    traceState.scale = scale;
-    traceState.offsetX = offsetX;
-    traceState.offsetY = offsetY;
+    ctx.fillText('▶', points[0].x, points[0].y);
     
     updateTraceProgress();
 }
 
 function handleTraceStart(e) {
     e.preventDefault();
-    traceState.isTracing = true;
-    
     const pos = getTracePos(e);
-    traceState.lastPoint = pos;
+    const startPoint = traceState.points[traceState.currentPoint];
     
-    checkTracePoint(pos);
+    const dist = Math.hypot(pos.x - startPoint.x, pos.y - startPoint.y);
+    if (dist < 30) {
+        traceState.isTracing = true;
+        playSound('pop');
+    }
 }
 
 function handleTraceMove(e) {
@@ -1607,19 +1344,37 @@ function handleTraceMove(e) {
     e.preventDefault();
     
     const pos = getTracePos(e);
+    const points = traceState.points;
     
-    // Desenhar linha do usuário
-    const ctx = traceState.ctx;
-    ctx.strokeStyle = '#4CAF50';
-    ctx.lineWidth = 15 * traceState.scale;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(traceState.lastPoint.x, traceState.lastPoint.y);
-    ctx.lineTo(pos.x, pos.y);
-    ctx.stroke();
-    
-    traceState.lastPoint = pos;
-    checkTracePoint(pos);
+    // Verificar se está próximo do próximo ponto
+    while (traceState.currentPoint < points.length - 1) {
+        const nextPoint = points[traceState.currentPoint + 1];
+        const dist = Math.hypot(pos.x - nextPoint.x, pos.y - nextPoint.y);
+        
+        if (dist < 25) {
+            // Desenhar linha até este ponto
+            const ctx = traceState.ctx;
+            ctx.beginPath();
+            ctx.moveTo(points[traceState.currentPoint].x, points[traceState.currentPoint].y);
+            ctx.lineTo(nextPoint.x, nextPoint.y);
+            ctx.strokeStyle = '#4CAF50';
+            ctx.lineWidth = 6;
+            ctx.lineCap = 'round';
+            ctx.stroke();
+            
+            traceState.currentPoint++;
+            updateTraceProgress();
+            
+            if (traceState.currentPoint >= points.length - 1) {
+                traceState.isTracing = false;
+                playSound('victory');
+                setTimeout(() => showVictoryWithStars(traceState.stars), 500);
+                return;
+            }
+        } else {
+            break;
+        }
+    }
 }
 
 function handleTraceEnd() {
@@ -1642,36 +1397,69 @@ function getTracePos(e) {
     };
 }
 
-function checkTracePoint(pos) {
-    const tolerance = 40 * traceState.scale;
-    
-    // Verificar pontos não tracejados em ordem
-    for (let i = 0; i < traceState.points.length; i++) {
-        const point = traceState.points[i];
-        if (point.traced) continue;
-        
-        const dist = Math.hypot(pos.x - point.x, pos.y - point.y);
-        if (dist < tolerance) {
-            point.traced = true;
-            traceState.tracedPoints++;
-            updateTraceProgress();
-            
-            // Verificar conclusão
-            if (traceState.tracedPoints >= traceState.totalPoints - 1) {
-                playSound('victory');
-                setTimeout(() => showVictoryWithStars(traceState.stars), 500);
-            }
-            break;
-        }
-    }
-}
-
 function updateTraceProgress() {
-    const percent = (traceState.tracedPoints / (traceState.totalPoints - 1)) * 100;
-    document.getElementById('trace-progress-bar').style.width = percent + '%';
+    const progress = (traceState.currentPoint / (traceState.points.length - 1)) * 100;
+    const bar = document.getElementById('trace-progress-bar');
+    if (bar) bar.style.width = progress + '%';
 }
 
 function resetTrace() {
-    loadTraceShape();
-    playSound('pop');
+    traceState.currentPoint = 0;
+    drawTraceGuide();
+}
+
+// ===== UTILITY FUNCTIONS =====
+function updateStarsDisplay(game, count) {
+    const display = document.getElementById(`${game}-stars`);
+    if (display) {
+        display.textContent = '⭐'.repeat(count) + '☆'.repeat(3 - count);
+    }
+}
+
+function showFeedback(success, stars = 0) {
+    const existing = document.querySelector('.feedback-overlay');
+    if (existing) existing.remove();
+    
+    const overlay = document.createElement('div');
+    overlay.className = 'feedback-overlay';
+    
+    if (success) {
+        overlay.innerHTML = `
+            <div class="feedback-icon success">✓</div>
+            ${stars > 0 ? `<div class="feedback-stars">${'⭐'.repeat(stars)}</div>` : ''}
+        `;
+    } else {
+        overlay.innerHTML = `<div class="feedback-icon error">✗</div>`;
+    }
+    
+    document.body.appendChild(overlay);
+    
+    setTimeout(() => {
+        overlay.classList.add('fade-out');
+        setTimeout(() => overlay.remove(), 300);
+    }, 600);
+}
+
+function showVictoryWithStars(stars) {
+    document.getElementById('victory-stars').textContent = '⭐'.repeat(stars) + '☆'.repeat(3 - stars);
+    document.getElementById('victory-text').textContent = stars === 3 ? 'Perfeito! 🎉' : 
+                                                           stars === 2 ? 'Muito bem! 👏' : 'Continue tentando! 💪';
+    showScreen('victory-screen');
+    playSound('victory');
+    createConfetti();
+}
+
+function showGameComplete() {
+    document.getElementById('victory-stars').textContent = '🏆';
+    document.getElementById('victory-text').textContent = 'Você completou todas as fases! 🎉🎊';
+    document.querySelector('.victory-title').textContent = 'Campeão!';
+    document.querySelector('.next-btn').style.display = 'none';
+    showScreen('victory-screen');
+    playSound('victory');
+    createConfetti();
+    
+    setTimeout(() => {
+        document.querySelector('.next-btn').style.display = '';
+        document.querySelector('.victory-title').textContent = 'Parabéns!';
+    }, 100);
 }
